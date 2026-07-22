@@ -16,7 +16,9 @@ is_mawb (true if a master air waybill number = 3-digit airline prefix + 8 digits
 dest_country (destination ISO 2-letter country code).
 Rules: shipper_city = shipper's city FULL name (e.g. SHENZHEN, SHANGHAI, HONG KONG).
 consignee_state = state/province ABBREVIATION (e.g. NY, CA for US). country = ISO 2-letter code (CN, US, ...).
-tel/zip/email in top-level and consignee_* = the CONSIGNEE's.`;
+tel/zip/email in top-level and consignee_* = the CONSIGNEE's.
+eori = EORI number = 2-letter country code + digits (e.g. IT07607410961, DE123456789). Look for a token matching that pattern.
+consignee_taxid = consignee's customs id: for EU put the EORI there, for Indonesia the NPWP, for Bangladesh the BIN, etc.`;
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 

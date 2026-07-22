@@ -445,6 +445,12 @@ function runValidation(){
     (R.reminders||[]).forEach(rm=>{
       items.push(`<div class="vitem info"><span class="ic">ⓘ</span><span><b>${rm}</b> 필수 — 서류에 있는지 확인 (${R.label})</span></div>`);
     });
+    // EORI 형식 체크 (유럽): 국가코드(2자리)+숫자
+    if(region==="EU"){
+      const eori=$("ac_tax").value.trim();
+      if(eori && !/^[A-Z]{2}\d{5,}$/i.test(eori.replace(/\s/g,"")))
+        items.push(`<div class="vitem bad"><span class="ic">⚠</span><span><b>EORI 형식 확인</b> — 국가코드+숫자 형태여야 함 (예: IT07607410961)</span></div>`);
+    }
   } else items.push(`<div class="vitem"><span>도착지역 선택(또는 자동감지) 시 필수값을 체크합니다.</span></div>`);
   const desc=$("d_desc").value.toUpperCase();
   const hits=VAGUE_TERMS.filter(t=>new RegExp("\\b"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(desc));
