@@ -2,15 +2,21 @@
 // 요청: POST /api/extract  body={ base64, mime }
 // 응답: 추출된 JSON 객체 ( { used_model, ...fields } )
 
-const GEM_PROMPT = `You extract fields from a freight document (air waybill / commercial invoice / packing list).
-Return ONLY a JSON object, no markdown. Keys (use "" if unknown):
-awb_no, invoice_no, carrier, flight, onboard, departure, via_to, by, destination,
-shipper, consignee, notify, marks, description, hs_code, package, gross_wt,
-tel, zip, email, eori, tax_id, form_no, ba_no,
+const GEM_PROMPT = `You extract fields from a freight document (air waybill / commercial invoice / packing list) for a forwarder.
+Return ONLY a JSON object, no markdown. Use "" if unknown. Keys:
+awb_no, destination, via_to, by,
+shipper, consignee, notify   (each = full multi-line name+address block, verbatim),
+description   (the FULL goods description text exactly as written, do NOT summarize or pick items; keep line breaks),
+marks   (shipping marks, verbatim),
+shipper_name, shipper_city, shipper_street, shipper_zip, shipper_country, shipper_tel, shipper_email,
+consignee_name, consignee_state, consignee_city, consignee_street, consignee_zip, consignee_country, consignee_tel, consignee_email, consignee_taxid,
+notify_name, notify_city, notify_street, notify_zip, notify_country,
+eori, form_no, ba_no,
 is_mawb (true if a master air waybill number = 3-digit airline prefix + 8 digits appears at top-right, else false),
 dest_country (destination ISO 2-letter country code).
-shipper/consignee/notify = full multi-line name+address block. description = item names joined by newline.
-tel/zip/email = the consignee's.`;
+Rules: shipper_city = shipper's city FULL name (e.g. SHENZHEN, SHANGHAI, HONG KONG).
+consignee_state = state/province ABBREVIATION (e.g. NY, CA for US). country = ISO 2-letter code (CN, US, ...).
+tel/zip/email in top-level and consignee_* = the CONSIGNEE's.`;
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 

@@ -26,26 +26,29 @@
   .seg.purple button.on{background:var(--purple)}
   .autoBadge{font-size:11px;color:var(--purple);background:var(--purple-soft);padding:2px 8px;border-radius:10px}
 
-  .wrap{display:grid;grid-template-columns:340px minmax(0,1fr);gap:14px;padding:14px;align-items:start}
-  @media(max-width:960px){.wrap{grid-template-columns:1fr}}
+  .wrap{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;padding:14px;align-items:start}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .panel > .ph{background:var(--head);padding:8px 12px;font-weight:600;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .panel > .ph{background:var(--head);padding:8px 12px;font-weight:600;border-bottom:1px solid var(--line)}
   .panel .body{padding:12px}
+  #left{position:sticky;top:14px;display:grid;gap:14px}
 
-  #drop{border:2px dashed var(--accent);border-radius:8px;background:var(--accent-soft);padding:24px;text-align:center;color:#3a5a9a;cursor:pointer;transition:.15s}
+  #drop{border:2px dashed var(--accent);border-radius:8px;background:var(--accent-soft);padding:22px;text-align:center;color:#3a5a9a;cursor:pointer;transition:.15s}
   #drop.hot{background:#dbe7ff;border-color:#1b57d6}
   #drop b{font-size:14px}
   #drop small{color:#5a6b8a}
 
-  fieldset{border:1px solid var(--line);border-radius:8px;margin:0 0 14px;padding:10px 12px 12px}
-  legend{font-weight:700;padding:0 6px;color:var(--accent);font-size:12.5px}
-  .grid{display:grid;grid-template-columns:110px 1fr;gap:7px 10px;align-items:center}
-  .grid label{color:var(--muted);font-size:12px}
-  input,textarea,select{width:100%;border:1px solid var(--line);border-radius:5px;padding:5px 7px;font:inherit;background:#fff}
+  fieldset{border:1px solid var(--line);border-radius:8px;margin:0 0 14px;padding:12px 14px 14px}
+  legend{font-weight:700;padding:0 6px;color:var(--accent);font-size:13px}
+  label.f{display:block;color:var(--muted);font-size:11.5px;margin-bottom:2px}
+  input,textarea,select{width:100%;border:1px solid var(--line);border-radius:5px;padding:7px 9px;font:inherit;background:#fff}
   input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
-  textarea{resize:vertical;min-height:52px;line-height:1.45}
-  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-  .btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit;font-weight:600}
+  textarea{resize:vertical;line-height:1.5}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+  .mb{margin-bottom:10px}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 13px;cursor:pointer;font:inherit;font-weight:600}
   .btn:hover{background:#f2f5f9}
   .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
   .btn.li{background:#f3ecff;border-color:#d9c8f5;color:#6a3fc0}
@@ -54,9 +57,9 @@
   .vitem{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:6px;margin-bottom:6px;font-size:12px}
   .vitem.ok{background:var(--ok-soft);color:#136c3a}
   .vitem.bad{background:var(--warn-soft);color:#a12727}
+  .vitem.info{background:#fff7e6;color:#8a5a00}
   .vitem .ic{font-weight:800}
-  .badge{display:inline-block;background:#eee;border-radius:10px;padding:1px 7px;font-size:11px;margin:2px 3px 0 0}
-  .badge.bad{background:var(--warn-soft);color:var(--warn);font-weight:600}
+  .badge.bad{display:inline-block;background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:1px 7px;font-size:11px;margin:2px 3px 0 0;font-weight:600}
   pre#out{background:#0f1720;color:#d6e2f0;padding:12px;border-radius:6px;max-height:240px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all}
   .note{background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;padding:8px 10px;color:#7a5b00;font-size:11.5px;margin-top:8px}
   .warnbox{background:var(--warn-soft);border:1px solid #f3b4b4;border-radius:6px;padding:10px;color:#a12727;font-size:12px;margin-top:10px}
@@ -65,12 +68,18 @@
   .typePill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px}
   .typePill.m{background:var(--accent-soft);color:var(--accent)}
   .typePill.h{background:var(--purple-soft);color:var(--purple)}
+  /* AMS 별도 화면 느낌 */
+  .amsWrap{border:2px solid var(--purple);border-radius:10px;margin:6px 0 14px;overflow:hidden}
+  .amsWrap .amsHead{background:var(--purple);color:#fff;padding:8px 14px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .amsWrap .amsBody{padding:12px 14px;background:#fbf9ff}
+  .amsBlock{border:1px solid #e3d7f7;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fff}
+  .amsBlock h4{margin:0 0 8px;font-size:12px;color:var(--purple)}
 </style>
 </head>
 <body>
 <header>
   <h1>빌(AWB) 입력 자동화</h1>
-  <span class="tag">Vercel + Gemini(서버) 버전</span>
+  <span class="tag">Vercel + Gemini(서버)</span>
 </header>
 
 <div class="ctrl">
@@ -92,23 +101,23 @@
 </div>
 
 <div class="wrap">
-  <div>
+  <!-- LEFT -->
+  <div id="left">
     <div class="panel">
-      <div class="ph">① 원본 업로드 <span id="modeHint" class="hint">체크빌(PDF/이미지) → 자동 추출·검증</span></div>
+      <div class="ph">① 원본 업로드</div>
       <div class="body">
         <div id="drop">
-          <b>여기로 파일을 끌어다 놓으세요</b><br>
-          <small>PDF · XLSX · XLS · 또는 클릭해서 선택</small>
+          <b>파일을 끌어다 놓기</b><br>
+          <small>PDF · XLSX · XLS · 클릭 선택</small>
           <input type="file" id="file" accept=".pdf,.xlsx,.xls,.csv" hidden>
         </div>
         <div id="status"></div>
       </div>
     </div>
-
-    <div class="panel" style="margin-top:14px">
-      <div class="ph">③ 검증 (필수값 · 광의어)</div>
+    <div class="panel">
+      <div class="ph">② 검증 (필수값 · 광의어)</div>
       <div class="body">
-        <div class="inline" style="margin-bottom:8px">
+        <div class="inline mb">
           <label style="color:var(--muted)">도착지역</label>
           <select id="region" style="width:auto">
             <option value="">— 선택 —</option>
@@ -125,100 +134,132 @@
         <div id="valList"></div>
       </div>
     </div>
+    <div class="panel">
+      <div class="ph">③ 추출</div>
+      <div class="body">
+        <div class="inline" style="justify-content:space-between">
+          <button class="btn" id="previewBtn">미리보기</button>
+          <button class="btn pri" id="exportBtn">⬇ 하우스 파일 추출</button>
+        </div>
+        <div class="hint">출력 형식은 임시 JSON. 추후 협의 형식으로 교체.</div>
+        <pre id="out" style="display:none"></pre>
+      </div>
+    </div>
   </div>
 
+  <!-- RIGHT: 입력폼 -->
   <div class="panel">
-    <div class="ph">
-      <span>② 빌 입력 <span id="typePill" class="typePill h">HAWB</span></span>
+    <div class="ph" style="display:flex;justify-content:space-between;align-items:center">
+      <span>빌 입력 <span id="typePill" class="typePill h">HAWB</span></span>
       <button class="btn" id="clearBtn">비우기</button>
     </div>
     <div class="body">
+
       <fieldset>
-        <legend><span id="noLabel">HAWB</span> 정보</legend>
-        <div class="grid">
-          <label><span id="noLabel2">HAWB</span> No</label><input id="awb_no" placeholder="MAWB=988-12345678 / HAWB=자유">
-          <label>Invoice No</label><input id="h_inv">
+        <legend>기본 정보</legend>
+        <div class="g2 mb">
+          <div><label class="f"><span id="noLabel">HAWB</span> No</label><input id="b_mawb" placeholder="MAWB=988-12345678 / HAWB=자유"></div>
+          <div><label class="f">Destination</label><input id="b_dest" placeholder="NEW YORK, NY U.S.A"></div>
         </div>
-        <div class="row3" style="margin-top:8px">
-          <div><label style="color:var(--muted)">Carrier</label><input id="m_carrier"></div>
-          <div><label style="color:var(--muted)">Flight</label><input id="m_flight"></div>
-          <div><label style="color:var(--muted)">Onboard</label><input id="m_onboard" placeholder="2026-07-22"></div>
-        </div>
-        <div class="row3" style="margin-top:8px">
-          <div><label style="color:var(--muted)">Departure</label><input id="m_dep" placeholder="ICN"></div>
-          <div><label style="color:var(--muted)">VIA/TO</label><input id="m_via" placeholder="JFK"></div>
-          <div><label style="color:var(--muted)">BY</label><input id="m_by" placeholder="OZ"></div>
-        </div>
-        <div style="margin-top:8px">
-          <label style="color:var(--muted)">Destination</label><input id="m_dest" placeholder="NEW YORK, NY U.S.A">
+        <div class="g2">
+          <div><label class="f">VIA / TO</label><input id="b_via" placeholder="JFK"></div>
+          <div><label class="f">BY</label><input id="b_by" placeholder="OZ"></div>
         </div>
       </fieldset>
 
       <fieldset>
-        <legend>당사자 · 품명</legend>
-        <div><label style="color:var(--muted)">Shipper</label><textarea id="h_shipper"></textarea></div>
-        <div style="margin-top:8px"><label style="color:var(--muted)">Consignee</label><textarea id="h_consignee"></textarea></div>
-        <div style="margin-top:8px"><label style="color:var(--muted)">Notify</label><textarea id="h_notify"></textarea></div>
-        <div style="margin-top:8px"><label style="color:var(--muted)">Marks &amp; Numbers</label><textarea id="h_marks" placeholder="SHIPPING MARK…"></textarea></div>
-        <div style="margin-top:8px">
-          <div class="inline" style="justify-content:space-between">
-            <label style="color:var(--muted)">Description (품명)</label>
-            <span class="inline">
-              <input id="li_qty" type="number" min="1" placeholder="개수" style="width:70px">
-              <button class="btn li" id="liBtn" title="리튬 문구 삽입">🔋 리튬 문구</button>
-            </span>
+        <legend>Party (Main 화면)</legend>
+        <div class="mb"><label class="f">Shipper</label><textarea id="p_shipper" style="min-height:88px"></textarea></div>
+        <div class="mb"><label class="f">Consignee</label><textarea id="p_consignee" style="min-height:88px"></textarea></div>
+        <div><label class="f">Notify</label><textarea id="p_notify" style="min-height:70px"></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Description (Mark &amp; Description 화면)</legend>
+        <div class="inline mb" style="justify-content:space-between">
+          <label class="f" style="margin:0">Description (품명) — 서류 내용 그대로 전체 입력</label>
+          <span class="inline">
+            <input id="li_qty" type="number" min="1" placeholder="개수" style="width:74px">
+            <button class="btn li" id="liBtn" title="리튬 문구 삽입">🔋 리튬 문구</button>
+          </span>
+        </div>
+        <textarea id="d_desc" style="min-height:120px" class="mb"></textarea>
+        <div><label class="f">Marks &amp; Numbers (SHIPPING MARK)</label><textarea id="d_marks" style="min-height:60px"></textarea></div>
+        <div class="hint">🔋 개수 입력 후 클릭 → 아래처럼 " " 로 감싸 3줄로 삽입:<br>&nbsp;&nbsp;" 40 PKGS OF LITHIUM ION / BATTERIES IN COMPLIANCE WITH / SECTION II OF PI 967"</div>
+      </fieldset>
+
+      <!-- AMS: 별도 화면 느낌 -->
+      <div class="amsWrap">
+        <div class="amsHead"><span>▤ AMS (EDI Address · 미국세관 제출용)</span><span style="font-weight:400;font-size:11px">별도 화면 — 시스템과 동일 형태</span></div>
+        <div class="amsBody">
+          <div class="amsBlock">
+            <h4>Shipper</h4>
+            <div class="mb"><label class="f">Name (풀네임)</label><input id="as_name"></div>
+            <div class="g4 mb">
+              <div><label class="f">City (도시 풀네임)</label><input id="as_city" placeholder="SHENZHEN"></div>
+              <div><label class="f">Zip</label><input id="as_zip"></div>
+              <div><label class="f">Country</label><input id="as_country" placeholder="CN"></div>
+              <div><label class="f">Tel</label><input id="as_tel"></div>
+            </div>
+            <div class="g2">
+              <div><label class="f">Street</label><input id="as_street"></div>
+              <div><label class="f">Email</label><input id="as_email"></div>
+            </div>
           </div>
-          <textarea id="h_desc" style="min-height:78px"></textarea>
-          <div class="hint">🔋 개수 입력 후 클릭 → "[개수] PKGS OF LITHIUM ION BATTERIES IN COMPLIANCE WITH SECTION II OF PI 967"</div>
+          <div class="amsBlock">
+            <h4>Consignee</h4>
+            <div class="mb"><label class="f">Name</label><input id="ac_name"></div>
+            <div class="g4 mb">
+              <div><label class="f">State (약어)</label><input id="ac_state" placeholder="NY"></div>
+              <div><label class="f">City</label><input id="ac_city"></div>
+              <div><label class="f">Zip</label><input id="ac_zip"></div>
+              <div><label class="f">Country</label><input id="ac_country" placeholder="US"></div>
+            </div>
+            <div class="g3 mb">
+              <div><label class="f">Street</label><input id="ac_street"></div>
+              <div><label class="f">Tel</label><input id="ac_tel"></div>
+              <div><label class="f">Email</label><input id="ac_email"></div>
+            </div>
+            <div><label class="f">Tax ID (NPWP/BIN 등)</label><input id="ac_tax"></div>
+          </div>
+          <div class="amsBlock">
+            <h4>Notify</h4>
+            <div class="mb"><label class="f">Name</label><input id="an_name"></div>
+            <div class="g4">
+              <div><label class="f">City</label><input id="an_city"></div>
+              <div><label class="f">Zip</label><input id="an_zip"></div>
+              <div><label class="f">Country</label><input id="an_country"></div>
+              <div><label class="f">Street</label><input id="an_street"></div>
+            </div>
+          </div>
+          <div class="g3">
+            <div><label class="f">EORI (유럽)</label><input id="x_eori"></div>
+            <div><label class="f">FORM No (나이지리아)</label><input id="x_form"></div>
+            <div><label class="f">BA No (나이지리아)</label><input id="x_ba"></div>
+          </div>
         </div>
-        <div class="row3" style="margin-top:10px">
-          <div><label style="color:var(--muted)">HS Code</label><input id="h_hs"></div>
-          <div><label style="color:var(--muted)">Package</label><input id="h_pkg"></div>
-          <div><label style="color:var(--muted)">Gross W/T</label><input id="h_gwt"></div>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>검증용 상세 (지역별 필수값)</legend>
-        <div class="row3">
-          <div><label style="color:var(--muted)">TEL</label><input id="v_tel"></div>
-          <div><label style="color:var(--muted)">ZIP</label><input id="v_zip"></div>
-          <div><label style="color:var(--muted)">EMAIL</label><input id="v_email"></div>
-        </div>
-        <div class="row3" style="margin-top:8px">
-          <div><label style="color:var(--muted)">EORI</label><input id="v_eori"></div>
-          <div><label style="color:var(--muted)">Tax ID (NPWP/BIN)</label><input id="v_tax"></div>
-          <div><label style="color:var(--muted)">FORM No</label><input id="v_form"></div>
-        </div>
-        <div class="row3" style="margin-top:8px">
-          <div><label style="color:var(--muted)">BA No</label><input id="v_ba"></div>
-        </div>
-      </fieldset>
-
-      <div class="inline" style="justify-content:flex-end;gap:8px">
-        <button class="btn" id="previewBtn">미리보기</button>
-        <button class="btn pri" id="exportBtn">⬇ 하우스 파일 추출</button>
       </div>
-      <div class="note">📄 출력 형식은 임시 <b>JSON</b>. 실제로는 담당자와 협의한 형식으로 교체. 추출은 <b>HAWB만</b> 대상.</div>
-      <pre id="out" style="display:none"></pre>
+
+      <div class="note">📄 출력은 임시 <b>JSON</b>. MAWB면 마스터, HAWB면 하우스로 추출.</div>
+
     </div>
   </div>
 </div>
 
 <script>
 const REGION_RULES = {
-  US:{label:"미국", req:[["v_tel","TEL"],["v_zip","ZIP"],["v_email","EMAIL"]]},
-  EU:{label:"유럽", req:[["v_eori","EORI"],["v_tel","TEL"],["h_hs","HS CODE"]]},
-  TR:{label:"튀르키예/TK", req:[["h_hs","HS CODE"]]},
-  CN:{label:"중국", req:[["v_tel","TEL"]]},
-  NG:{label:"나이지리아", req:[["v_form","FORM 번호"],["v_ba","BA 번호"]]},
-  ID:{label:"인도네시아", req:[["v_tax","Tax ID(NPWP)"],["h_hs","HS CODE"]]},
-  BD:{label:"방글라데시", req:[["v_tax","BIN 번호"]]},
+  US:{label:"미국", req:[["ac_tel","TEL"],["ac_zip","ZIP"],["ac_email","EMAIL"]], reminders:[]},
+  EU:{label:"유럽", req:[["x_eori","EORI"],["ac_tel","TEL"]], reminders:["HS CODE"]},
+  TR:{label:"튀르키예/TK", req:[], reminders:["HS CODE"]},
+  CN:{label:"중국", req:[["ac_tel","TEL"]], reminders:[]},
+  NG:{label:"나이지리아", req:[["x_form","FORM 번호"],["x_ba","BA 번호"]], reminders:[]},
+  ID:{label:"인도네시아", req:[["ac_tax","Tax ID(NPWP)"]], reminders:["HS CODE"]},
+  BD:{label:"방글라데시", req:[["ac_tax","BIN 번호"]], reminders:[]},
 };
 const VAGUE_TERMS = ["GENERAL CARGO","FREIGHT ALL KINDS","FAK","SAID TO CONTAIN","STC",
  "SPARE PARTS","MACHINE PARTS","PARTS","ACCESSORIES","MERCHANDISE","SAMPLES","SAMPLE",
  "GIFTS","GIFT","ELECTRONICS","TEXTILES","APPAREL","GARMENTS","CHEMICALS","FOODSTUFFS",
- "PLASTIC GOODS","IRON WARE","CONSOLIDATED CARGO","PERSONAL EFFECTS","GOODS"];
+ "PLASTIC GOODS","IRON WARE","PERSONAL EFFECTS","GOODS"];
 const EU_LIST = ["GERMANY","FRANCE","ITALY","SPAIN","NETHERLANDS","BELGIUM","POLAND","SWEDEN",
  "AUSTRIA","DENMARK","FINLAND","IRELAND","PORTUGAL","GREECE","CZECH","HUNGARY","ROMANIA",
  "SLOVAKIA","SLOVENIA","CROATIA","BULGARIA","LUXEMBOURG","ESTONIA","LATVIA","LITHUANIA","MALTA","CYPRUS"];
@@ -226,7 +267,8 @@ const CC2REGION = {US:"US",TR:"TR",NG:"NG",ID:"ID",BD:"BD",CN:"CN",
  DE:"EU",FR:"EU",IT:"EU",ES:"EU",NL:"EU",BE:"EU",PL:"EU",SE:"EU",AT:"EU",DK:"EU",FI:"EU",
  IE:"EU",PT:"EU",GR:"EU",CZ:"EU",HU:"EU",RO:"EU",SK:"EU",SI:"EU",HR:"EU",BG:"EU",LU:"EU",
  EE:"EU",LV:"EU",LT:"EU",MT:"EU",CY:"EU"};
-const LITHIUM_TXT = n => `${n} PKGS OF LITHIUM ION BATTERIES IN COMPLIANCE WITH SECTION II OF PI 967`;
+const CONSOL_TXT = "CONSOLIDATION SHIPMENT AS\nPER ATTACHED MANIFEST";
+const LITHIUM_TXT = n => `" ${n} PKGS OF LITHIUM ION\nBATTERIES IN COMPLIANCE WITH\nSECTION II OF PI 967"`;
 const MAWB_RE = /\b\d{3}-?\s?\d{4}\s?\d{4}\b/;
 
 const $ = id => document.getElementById(id);
@@ -236,15 +278,20 @@ let MODE="check", TYPE="HAWB", manualRegion=false, manualType=false;
 $("modeSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{
   MODE=b.dataset.mode;
   $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
-  $("modeHint").textContent = MODE==="check" ? "체크빌(PDF/이미지) → 자동 추출·검증" : "CI/PL(엑셀) → 하우스로 자동 입력";
   if(MODE==="input"){ manualType=false; autoSetType("HAWB","CI/PL"); }
 });
 $("typeSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{ manualType=true; setType(b.dataset.type); $("autoBadge").style.display="none"; });
 function setType(t){
   TYPE=t;
   $("typeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x.dataset.type===t));
-  $("noLabel").textContent=t; $("noLabel2").textContent=t;
+  $("noLabel").textContent=t;
   const pill=$("typePill"); pill.textContent=t; pill.className="typePill "+(t==="MAWB"?"m":"h");
+  $("exportBtn").textContent = t==="MAWB" ? "⬇ 마스터 파일 추출" : "⬇ 하우스 파일 추출";
+  // 마스터 기본 문구
+  const d=$("d_desc");
+  if(t==="MAWB"){ if(d.value.trim()==="") d.value=CONSOL_TXT; }
+  else { if(d.value.trim()===CONSOL_TXT) d.value=""; }
+  runValidation();
 }
 function autoSetType(t,reason){
   if(manualType) return;
@@ -252,7 +299,7 @@ function autoSetType(t,reason){
   const b=$("autoBadge"); b.style.display="inline-block"; b.textContent="자동감지: "+t+(reason?(" ("+reason+")"):"");
 }
 
-/* ---------- 파일 업로드 ---------- */
+/* ---------- 업로드 ---------- */
 const drop=$("drop"), fileInput=$("file");
 drop.onclick=()=>fileInput.click();
 drop.ondragover=e=>{e.preventDefault();drop.classList.add("hot");};
@@ -273,13 +320,13 @@ function detectFromFilename(name){
   const digits=(name.match(/\d[\d-\s]{9,}\d/g)||[]).map(s=>s.replace(/\D/g,"")).find(s=>s.length>=11);
   if(digits && digits.length>=11){
     const m=digits.slice(0,11), formatted=m.slice(0,3)+"-"+m.slice(3);
-    if(!$("awb_no").value) $("awb_no").value=formatted;
+    if(!$("b_mawb").value) $("b_mawb").value=formatted;
     if(MODE==="check") autoSetType("MAWB","파일명 "+formatted);
   }
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-/* ----- 엑셀: 브라우저에서 파싱 (Gemini 불필요) ----- */
+/* ----- 엑셀: 브라우저 파싱 ----- */
 function handleExcel(buf,name){
   try{
     const wb=XLSX.read(buf,{type:"array"});
@@ -288,37 +335,41 @@ function handleExcel(buf,name){
     const flat=rows.map(r=>r.join(" ")).join("\n");
     if(MODE==="check"){ detectTypeFromText(flat); } else { autoSetType("HAWB","CI/PL"); }
     extractFromRows(rows); autoRegion();
-    setStatus("✔ 엑셀에서 자동 추출했습니다. 오른쪽에서 확인·수정하세요.","okbox");
+    setStatus("✔ 엑셀에서 자동 추출. 확인·수정하세요.","okbox");
     drop.querySelector("b").textContent="✔ "+name;
   }catch(err){ setStatus("엑셀을 읽지 못했어요: "+esc(err.message),"warnbox"); }
 }
 
-/* ----- PDF: 서버(/api/extract)로 보내 Gemini가 추출 ----- */
+/* ----- PDF: 서버(/api/extract) → Gemini ----- */
 async function handlePdf(buf,name){
   drop.querySelector("b").textContent="✔ "+name;
-  setStatus("🤖 서버(Gemini)가 PDF를 읽는 중… (수 초 소요)","busybox");
+  setStatus("🤖 서버(Gemini)가 PDF를 읽는 중… (수 초)","busybox");
   try{
     const obj=await serverExtract(toBase64(buf),"application/pdf");
     if(obj.error){ setStatus("추출 오류: "+esc(obj.error)+(obj.detail?("<br>"+esc(obj.detail)):""),"warnbox"); return; }
     applyExtract(obj);
-    setStatus("✔ 서버(Gemini)가 추출했습니다. 확인·수정하세요.","okbox");
+    setStatus("✔ 추출 완료"+(obj.used_model?(" ("+esc(obj.used_model)+")"):"")+". 확인·수정하세요.","okbox");
   }catch(err){
-    setStatus("서버 호출 실패: "+esc(err.message)+"<br>Vercel 환경변수(GEMINI_API_KEY) 설정을 확인하세요. (로컬 file:// 로 열면 서버가 없어 작동하지 않습니다 — 배포 URL에서 사용)","warnbox");
+    setStatus("서버 호출 실패: "+esc(err.message)+"<br>(로컬 file:// 아닌 배포 URL에서 사용)","warnbox");
   }
 }
 function toBase64(buf){ let s="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s); }
 async function serverExtract(base64,mime){
   const res=await fetch("/api/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({base64,mime})});
   const j=await res.json().catch(()=>({error:"응답 파싱 실패 ("+res.status+")"}));
-  if(!res.ok && !j.error) throw new Error(res.status+"");
   return j;
 }
 function applyExtract(o){
-  const map={awb_no:"awb_no",invoice_no:"h_inv",carrier:"m_carrier",flight:"m_flight",onboard:"m_onboard",
-    departure:"m_dep",via_to:"m_via",by:"m_by",destination:"m_dest",shipper:"h_shipper",consignee:"h_consignee",
-    notify:"h_notify",marks:"h_marks",description:"h_desc",hs_code:"h_hs",package:"h_pkg",gross_wt:"h_gwt",
-    tel:"v_tel",zip:"v_zip",email:"v_email",eori:"v_eori",tax_id:"v_tax",form_no:"v_form",ba_no:"v_ba"};
-  Object.entries(map).forEach(([k,id])=>{ if(o[k]!=null&&o[k]!=="") $(id).value=o[k]; });
+  const map={
+    awb_no:"b_mawb", destination:"b_dest", via_to:"b_via", by:"b_by",
+    shipper:"p_shipper", consignee:"p_consignee", notify:"p_notify",
+    description:"d_desc", marks:"d_marks",
+    shipper_name:"as_name", shipper_city:"as_city", shipper_street:"as_street", shipper_zip:"as_zip", shipper_country:"as_country", shipper_tel:"as_tel", shipper_email:"as_email",
+    consignee_name:"ac_name", consignee_state:"ac_state", consignee_city:"ac_city", consignee_street:"ac_street", consignee_zip:"ac_zip", consignee_country:"ac_country", consignee_tel:"ac_tel", consignee_email:"ac_email", consignee_taxid:"ac_tax",
+    notify_name:"an_name", notify_city:"an_city", notify_street:"an_street", notify_zip:"an_zip", notify_country:"an_country",
+    eori:"x_eori", form_no:"x_form", ba_no:"x_ba"
+  };
+  Object.entries(map).forEach(([k,id])=>{ if(o[k]!=null&&o[k]!=="" && $(id)) $(id).value=o[k]; });
   if(MODE==="check"){ if(o.is_mawb===true)autoSetType("MAWB","Gemini"); else if(o.is_mawb===false)autoSetType("HAWB","Gemini"); }
   if(o.dest_country && CC2REGION[String(o.dest_country).toUpperCase()] && !manualRegion){
     $("region").value=CC2REGION[String(o.dest_country).toUpperCase()]; $("regionAuto").style.display="inline-block";
@@ -344,14 +395,14 @@ function detectRegion(text){
 }
 function autoRegion(){
   if(manualRegion) return;
-  const r=detectRegion($("h_consignee").value+" "+$("m_dest").value+" "+$("h_notify").value);
+  const r=detectRegion($("p_consignee").value+" "+$("b_dest").value+" "+$("ac_country").value+" "+$("p_notify").value);
   if(r){ $("region").value=r; $("regionAuto").style.display="inline-block"; }
   runValidation();
 }
 $("region").addEventListener("change",()=>{ manualRegion=true; $("regionAuto").style.display="none"; runValidation(); });
-["h_consignee","m_dest","h_notify"].forEach(id=>$(id).addEventListener("input",autoRegion));
+["p_consignee","b_dest","ac_country","p_notify"].forEach(id=>$(id).addEventListener("input",autoRegion));
 
-/* ---------- 추출 (엑셀 행) ---------- */
+/* ---------- 엑셀 추출 ---------- */
 function extractFromRows(rows){
   const cells=[]; rows.forEach((r,ri)=>r.forEach((c,ci)=>{const t=String(c).trim();if(t)cells.push({ri,ci,t});}));
   const norm=s=>s.toLowerCase().replace(/^\s*\d+\s*[.)]\s*/,"").replace(/[:：]/g,"").trim();
@@ -371,13 +422,9 @@ function extractFromRows(rows){
     }
     return out.join("\n");
   }
-  fill("h_shipper",blockAfter(SHIP)); fill("h_consignee",blockAfter(CNEE)); fill("h_notify",blockAfter(NOTI));
-  const invCell=cells.find(c=>/inv(oice)?\s*no|no\.\s*:/i.test(c.t)&&/\d/.test(c.t))||cells.find(c=>/^IN\d{5,}/i.test(c.t));
-  if(invCell){const m=invCell.t.match(/([A-Z]{0,3}\d{5,}[A-Z0-9-]*)/i);if(m)fill("h_inv",m[1]);}
-  const hsCell=cells.find(c=>/^\d{4}\.\d{2}\.?\d{0,4}$/.test(c.t))||cells.find(c=>/^\d{6,10}$/.test(c.t)&&c.t.length>=6);
-  if(hsCell)fill("h_hs",hsCell.t);
-  const email=cells.map(c=>c.t.match(/[\w.\-]+@[\w.\-]+\.\w+/)).find(Boolean); if(email)fill("v_email",email[0]);
-  const tel=cells.map(c=>{const m=c.t.match(/(?:tel|전화|phone)[:\s]*([+\d][\d\s\-()]{6,})/i);return m?m[1].trim():null;}).find(Boolean); if(tel)fill("v_tel",tel);
+  fill("p_shipper",blockAfter(SHIP)); fill("p_consignee",blockAfter(CNEE)); fill("p_notify",blockAfter(NOTI));
+  const email=cells.map(c=>c.t.match(/[\w.\-]+@[\w.\-]+\.\w+/)).find(Boolean); if(email)fill("ac_email",email[0]);
+  const tel=cells.map(c=>{const m=c.t.match(/(?:tel|전화|phone)[:\s]*([+\d][\d\s\-()]{6,})/i);return m?m[1].trim():null;}).find(Boolean); if(tel)fill("ac_tel",tel);
   const descStart=cells.findIndex(c=>/description of good|품명|description/i.test(c.t));
   if(descStart>=0){
     let items=[];
@@ -385,33 +432,37 @@ function extractFromRows(rows){
       const t=cells[i].t;
       if(isLabel(t,["brand","hs code","hs.code","quantity","unit price","total","amount","authorized"]))continue;
       if(/^\d[\d.,]*$/.test(t)||/pcs$|kg$|usd$/i.test(t)||t.length<4)continue;
-      items.push(t); if(items.length>=8)break;
+      items.push(t);
     }
-    if(items.length)fill("h_desc",items.join("\n"));
+    if(items.length)fill("d_desc",items.join("\n"));
   }
   runValidation();
 }
-function fill(id,val){ if(val && !$(id).value) $(id).value=val; }
+function fill(id,val){ if(val && $(id) && !$(id).value) $(id).value=val; }
 
 /* ---------- 리튬 ---------- */
 $("liBtn").onclick=()=>{
   const n=$("li_qty").value.trim();
   if(!n){$("li_qty").focus();alert("개수를 먼저 입력하세요.");return;}
-  const d=$("h_desc"); d.value=(d.value?d.value.replace(/\s*$/,"")+"\n":"")+LITHIUM_TXT(n); runValidation();
+  const d=$("d_desc"); d.value=(d.value?d.value.replace(/\s*$/,"")+"\n":"")+LITHIUM_TXT(n); runValidation();
 };
 
 /* ---------- 검증 ---------- */
-["region","v_tel","v_zip","v_email","v_eori","v_tax","v_form","v_ba","h_hs","h_desc"]
+["region","ac_tel","ac_zip","ac_email","x_eori","ac_tax","x_form","x_ba","d_desc"]
   .forEach(id=>$(id).addEventListener("input",runValidation));
 function runValidation(){
   const box=$("valList"), region=$("region").value; let items=[];
   if(region&&REGION_RULES[region]){
-    REGION_RULES[region].req.forEach(([id,name])=>{
+    const R=REGION_RULES[region];
+    R.req.forEach(([id,name])=>{
       const ok=$(id).value.trim()!=="";
-      items.push(`<div class="vitem ${ok?'ok':'bad'}"><span class="ic">${ok?'✔':'✕'}</span><span><b>${name}</b> ${ok?'입력됨':'누락 — '+REGION_RULES[region].label+' 필수값'}</span></div>`);
+      items.push(`<div class="vitem ${ok?'ok':'bad'}"><span class="ic">${ok?'✔':'✕'}</span><span><b>${name}</b> ${ok?'입력됨':'누락 — '+R.label+' 필수값'}</span></div>`);
+    });
+    (R.reminders||[]).forEach(rm=>{
+      items.push(`<div class="vitem info"><span class="ic">ⓘ</span><span><b>${rm}</b> 필수 — 서류에 있는지 확인 (${R.label})</span></div>`);
     });
   } else items.push(`<div class="vitem"><span>도착지역을 선택(또는 자동감지)하면 필수값을 체크합니다.</span></div>`);
-  const desc=$("h_desc").value.toUpperCase();
+  const desc=$("d_desc").value.toUpperCase();
   const hits=VAGUE_TERMS.filter(t=>new RegExp("\\b"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(desc));
   if(desc.trim()!==""){
     if(hits.length) items.push(`<div class="vitem bad"><span class="ic">⚠</span><span><b>광의어 감지</b> — 구체적 품명 필요<br>${hits.map(h=>`<span class="badge bad">${h}</span>`).join("")}</span></div>`);
@@ -424,24 +475,24 @@ function runValidation(){
 function collect(){
   return {
     type:TYPE, mode:MODE,
-    awb:{ no:$("awb_no").value, invoice_no:$("h_inv").value, carrier:$("m_carrier").value,
-      flight:$("m_flight").value, onboard:$("m_onboard").value, departure:$("m_dep").value,
-      via_to:$("m_via").value, by:$("m_by").value, destination:$("m_dest").value },
-    party:{ shipper:$("h_shipper").value, consignee:$("h_consignee").value, notify:$("h_notify").value },
-    cargo:{ marks:$("h_marks").value, description:$("h_desc").value, hs_code:$("h_hs").value,
-      package:$("h_pkg").value, gross_wt:$("h_gwt").value },
-    validation:{ region:$("region").value, tel:$("v_tel").value, zip:$("v_zip").value,
-      email:$("v_email").value, eori:$("v_eori").value, tax_id:$("v_tax").value,
-      form_no:$("v_form").value, ba_no:$("v_ba").value }
+    basic:{ no:$("b_mawb").value, destination:$("b_dest").value, via_to:$("b_via").value, by:$("b_by").value },
+    party:{ shipper:$("p_shipper").value, consignee:$("p_consignee").value, notify:$("p_notify").value },
+    description:$("d_desc").value, marks:$("d_marks").value,
+    ams:{
+      shipper:{ name:$("as_name").value, city:$("as_city").value, street:$("as_street").value, zip:$("as_zip").value, country:$("as_country").value, tel:$("as_tel").value, email:$("as_email").value },
+      consignee:{ name:$("ac_name").value, state:$("ac_state").value, city:$("ac_city").value, street:$("ac_street").value, zip:$("ac_zip").value, country:$("ac_country").value, tel:$("ac_tel").value, email:$("ac_email").value, tax_id:$("ac_tax").value },
+      notify:{ name:$("an_name").value, city:$("an_city").value, street:$("an_street").value, zip:$("an_zip").value, country:$("an_country").value },
+      eori:$("x_eori").value, form_no:$("x_form").value, ba_no:$("x_ba").value
+    },
+    validation:{ region:$("region").value }
   };
 }
 $("previewBtn").onclick=()=>{const o=$("out");o.style.display="block";o.textContent=JSON.stringify(collect(),null,2);};
 $("exportBtn").onclick=()=>{
-  if(TYPE==="MAWB"){ if(!confirm("추출 대상은 보통 HAWB(하우스)입니다. 지금 종류가 MAWB인데 그대로 추출할까요?")) return; }
   const data=collect();
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download=TYPE+"_"+(data.awb.no||data.awb.invoice_no||"export")+".json"; a.click();
+  a.download=TYPE+"_"+(data.basic.no||"export")+".json"; a.click();
 };
 $("clearBtn").onclick=()=>{document.querySelectorAll("input,textarea").forEach(el=>{if(el.type!=="file")el.value="";});manualRegion=false;manualType=false;$("regionAuto").style.display="none";$("autoBadge").style.display="none";runValidation();};
 
