@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>빌(AWB) 입력 자동화</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#fff; --line:#dde3ea; --ink:#1f2933; --muted:#6b7684;
+    --accent:#2f6fed; --accent-soft:#eaf1fe; --warn:#d64545; --warn-soft:#fdeaea;
+    --ok:#1f9d55; --ok-soft:#e7f6ee; --head:#eef2f7; --purple:#7a4dd1; --purple-soft:#f3ecff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","맑은 고딕",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
+  header{background:#1f2933;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:600}
+  header .tag{font-size:11px;background:#3a4756;padding:3px 8px;border-radius:10px;color:#c7d0da}
+
+  .ctrl{margin:14px 14px 0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;display:flex;gap:26px;flex-wrap:wrap;align-items:center}
+  .ctrl .grp{display:flex;gap:8px;align-items:center}
+  .ctrl .glabel{color:var(--muted);font-weight:600;font-size:12px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:6px 14px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted)}
+  .seg button.on{background:var(--accent);color:#fff}
+  .seg.purple button.on{background:var(--purple)}
+  .autoBadge{font-size:11px;color:var(--purple);background:var(--purple-soft);padding:2px 8px;border-radius:10px}
+
+  .wrap{display:grid;grid-template-columns:340px minmax(0,1fr);gap:14px;padding:14px;align-items:start}
+  @media(max-width:960px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .panel > .ph{background:var(--head);padding:8px 12px;font-weight:600;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .panel .body{padding:12px}
+
+  #drop{border:2px dashed var(--accent);border-radius:8px;background:var(--accent-soft);padding:24px;text-align:center;color:#3a5a9a;cursor:pointer;transition:.15s}
+  #drop.hot{background:#dbe7ff;border-color:#1b57d6}
+  #drop b{font-size:14px}
+  #drop small{color:#5a6b8a}
+
+  fieldset{border:1px solid var(--line);border-radius:8px;margin:0 0 14px;padding:10px 12px 12px}
+  legend{font-weight:700;padding:0 6px;color:var(--accent);font-size:12.5px}
+  .grid{display:grid;grid-template-columns:110px 1fr;gap:7px 10px;align-items:center}
+  .grid label{color:var(--muted);font-size:12px}
+  input,textarea,select{width:100%;border:1px solid var(--line);border-radius:5px;padding:5px 7px;font:inherit;background:#fff}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+  textarea{resize:vertical;min-height:52px;line-height:1.45}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit;font-weight:600}
+  .btn:hover{background:#f2f5f9}
+  .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.li{background:#f3ecff;border-color:#d9c8f5;color:#6a3fc0}
+  .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .hint{color:var(--muted);font-size:11px;margin-top:3px}
+  .vitem{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:6px;margin-bottom:6px;font-size:12px}
+  .vitem.ok{background:var(--ok-soft);color:#136c3a}
+  .vitem.bad{background:var(--warn-soft);color:#a12727}
+  .vitem .ic{font-weight:800}
+  .badge{display:inline-block;background:#eee;border-radius:10px;padding:1px 7px;font-size:11px;margin:2px 3px 0 0}
+  .badge.bad{background:var(--warn-soft);color:var(--warn);font-weight:600}
+  pre#out{background:#0f1720;color:#d6e2f0;padding:12px;border-radius:6px;max-height:240px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all}
+  .note{background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;padding:8px 10px;color:#7a5b00;font-size:11.5px;margin-top:8px}
+  .warnbox{background:var(--warn-soft);border:1px solid #f3b4b4;border-radius:6px;padding:10px;color:#a12727;font-size:12px;margin-top:10px}
+  .okbox{background:var(--ok-soft);border:1px solid #b7e2c6;border-radius:6px;padding:10px;color:#136c3a;font-size:12px;margin-top:10px}
+  .busybox{background:var(--accent-soft);border:1px solid #b8d0fb;border-radius:6px;padding:10px;color:#22528f;font-size:12px;margin-top:10px}
+  .typePill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px}
+  .typePill.m{background:var(--accent-soft);color:var(--accent)}
+  .typePill.h{background:var(--purple-soft);color:var(--purple)}
+</style>
+</head>
+<body>
+<header>
+  <h1>빌(AWB) 입력 자동화</h1>
+  <span class="tag">Vercel + Gemini(서버) 버전</span>
+</header>
+
+<div class="ctrl">
+  <div class="grp">
+    <span class="glabel">입력 모드</span>
+    <div class="seg" id="modeSeg">
+      <button data-mode="check" class="on">체크빌 검증</button>
+      <button data-mode="input">빌 입력(CI/PL)</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="glabel">빌 종류</span>
+    <div class="seg purple" id="typeSeg">
+      <button data-type="MAWB">MAWB</button>
+      <button data-type="HAWB" class="on">HAWB</button>
+    </div>
+    <span class="autoBadge" id="autoBadge" style="display:none"></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div>
+    <div class="panel">
+      <div class="ph">① 원본 업로드 <span id="modeHint" class="hint">체크빌(PDF/이미지) → 자동 추출·검증</span></div>
+      <div class="body">
+        <div id="drop">
+          <b>여기로 파일을 끌어다 놓으세요</b><br>
+          <small>PDF · XLSX · XLS · 또는 클릭해서 선택</small>
+          <input type="file" id="file" accept=".pdf,.xlsx,.xls,.csv" hidden>
+        </div>
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <div class="ph">③ 검증 (필수값 · 광의어)</div>
+      <div class="body">
+        <div class="inline" style="margin-bottom:8px">
+          <label style="color:var(--muted)">도착지역</label>
+          <select id="region" style="width:auto">
+            <option value="">— 선택 —</option>
+            <option value="US">미국 (US)</option>
+            <option value="EU">유럽 (EU)</option>
+            <option value="TR">튀르키예/TK (TR)</option>
+            <option value="CN">중국 (CN)</option>
+            <option value="NG">나이지리아 (NG)</option>
+            <option value="ID">인도네시아 (ID)</option>
+            <option value="BD">방글라데시 (BD)</option>
+          </select>
+          <span class="autoBadge" id="regionAuto" style="display:none">자동감지</span>
+        </div>
+        <div id="valList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ph">
+      <span>② 빌 입력 <span id="typePill" class="typePill h">HAWB</span></span>
+      <button class="btn" id="clearBtn">비우기</button>
+    </div>
+    <div class="body">
+      <fieldset>
+        <legend><span id="noLabel">HAWB</span> 정보</legend>
+        <div class="grid">
+          <label><span id="noLabel2">HAWB</span> No</label><input id="awb_no" placeholder="MAWB=988-12345678 / HAWB=자유">
+          <label>Invoice No</label><input id="h_inv">
+        </div>
+        <div class="row3" style="margin-top:8px">
+          <div><label style="color:var(--muted)">Carrier</label><input id="m_carrier"></div>
+          <div><label style="color:var(--muted)">Flight</label><input id="m_flight"></div>
+          <div><label style="color:var(--muted)">Onboard</label><input id="m_onboard" placeholder="2026-07-22"></div>
+        </div>
+        <div class="row3" style="margin-top:8px">
+          <div><label style="color:var(--muted)">Departure</label><input id="m_dep" placeholder="ICN"></div>
+          <div><label style="color:var(--muted)">VIA/TO</label><input id="m_via" placeholder="JFK"></div>
+          <div><label style="color:var(--muted)">BY</label><input id="m_by" placeholder="OZ"></div>
+        </div>
+        <div style="margin-top:8px">
+          <label style="color:var(--muted)">Destination</label><input id="m_dest" placeholder="NEW YORK, NY U.S.A">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>당사자 · 품명</legend>
+        <div><label style="color:var(--muted)">Shipper</label><textarea id="h_shipper"></textarea></div>
+        <div style="margin-top:8px"><label style="color:var(--muted)">Consignee</label><textarea id="h_consignee"></textarea></div>
+        <div style="margin-top:8px"><label style="color:var(--muted)">Notify</label><textarea id="h_notify"></textarea></div>
+        <div style="margin-top:8px"><label style="color:var(--muted)">Marks &amp; Numbers</label><textarea id="h_marks" placeholder="SHIPPING MARK…"></textarea></div>
+        <div style="margin-top:8px">
+          <div class="inline" style="justify-content:space-between">
+            <label style="color:var(--muted)">Description (품명)</label>
+            <span class="inline">
+              <input id="li_qty" type="number" min="1" placeholder="개수" style="width:70px">
+              <button class="btn li" id="liBtn" title="리튬 문구 삽입">🔋 리튬 문구</button>
+            </span>
+          </div>
+          <textarea id="h_desc" style="min-height:78px"></textarea>
+          <div class="hint">🔋 개수 입력 후 클릭 → "[개수] PKGS OF LITHIUM ION BATTERIES IN COMPLIANCE WITH SECTION II OF PI 967"</div>
+        </div>
+        <div class="row3" style="margin-top:10px">
+          <div><label style="color:var(--muted)">HS Code</label><input id="h_hs"></div>
+          <div><label style="color:var(--muted)">Package</label><input id="h_pkg"></div>
+          <div><label style="color:var(--muted)">Gross W/T</label><input id="h_gwt"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>검증용 상세 (지역별 필수값)</legend>
+        <div class="row3">
+          <div><label style="color:var(--muted)">TEL</label><input id="v_tel"></div>
+          <div><label style="color:var(--muted)">ZIP</label><input id="v_zip"></div>
+          <div><label style="color:var(--muted)">EMAIL</label><input id="v_email"></div>
+        </div>
+        <div class="row3" style="margin-top:8px">
+          <div><label style="color:var(--muted)">EORI</label><input id="v_eori"></div>
+          <div><label style="color:var(--muted)">Tax ID (NPWP/BIN)</label><input id="v_tax"></div>
+          <div><label style="color:var(--muted)">FORM No</label><input id="v_form"></div>
+        </div>
+        <div class="row3" style="margin-top:8px">
+          <div><label style="color:var(--muted)">BA No</label><input id="v_ba"></div>
+        </div>
+      </fieldset>
+
+      <div class="inline" style="justify-content:flex-end;gap:8px">
+        <button class="btn" id="previewBtn">미리보기</button>
+        <button class="btn pri" id="exportBtn">⬇ 하우스 파일 추출</button>
+      </div>
+      <div class="note">📄 출력 형식은 임시 <b>JSON</b>. 실제로는 담당자와 협의한 형식으로 교체. 추출은 <b>HAWB만</b> 대상.</div>
+      <pre id="out" style="display:none"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+const REGION_RULES = {
+  US:{label:"미국", req:[["v_tel","TEL"],["v_zip","ZIP"],["v_email","EMAIL"]]},
+  EU:{label:"유럽", req:[["v_eori","EORI"],["v_tel","TEL"],["h_hs","HS CODE"]]},
+  TR:{label:"튀르키예/TK", req:[["h_hs","HS CODE"]]},
+  CN:{label:"중국", req:[["v_tel","TEL"]]},
+  NG:{label:"나이지리아", req:[["v_form","FORM 번호"],["v_ba","BA 번호"]]},
+  ID:{label:"인도네시아", req:[["v_tax","Tax ID(NPWP)"],["h_hs","HS CODE"]]},
+  BD:{label:"방글라데시", req:[["v_tax","BIN 번호"]]},
+};
+const VAGUE_TERMS = ["GENERAL CARGO","FREIGHT ALL KINDS","FAK","SAID TO CONTAIN","STC",
+ "SPARE PARTS","MACHINE PARTS","PARTS","ACCESSORIES","MERCHANDISE","SAMPLES","SAMPLE",
+ "GIFTS","GIFT","ELECTRONICS","TEXTILES","APPAREL","GARMENTS","CHEMICALS","FOODSTUFFS",
+ "PLASTIC GOODS","IRON WARE","CONSOLIDATED CARGO","PERSONAL EFFECTS","GOODS"];
+const EU_LIST = ["GERMANY","FRANCE","ITALY","SPAIN","NETHERLANDS","BELGIUM","POLAND","SWEDEN",
+ "AUSTRIA","DENMARK","FINLAND","IRELAND","PORTUGAL","GREECE","CZECH","HUNGARY","ROMANIA",
+ "SLOVAKIA","SLOVENIA","CROATIA","BULGARIA","LUXEMBOURG","ESTONIA","LATVIA","LITHUANIA","MALTA","CYPRUS"];
+const CC2REGION = {US:"US",TR:"TR",NG:"NG",ID:"ID",BD:"BD",CN:"CN",
+ DE:"EU",FR:"EU",IT:"EU",ES:"EU",NL:"EU",BE:"EU",PL:"EU",SE:"EU",AT:"EU",DK:"EU",FI:"EU",
+ IE:"EU",PT:"EU",GR:"EU",CZ:"EU",HU:"EU",RO:"EU",SK:"EU",SI:"EU",HR:"EU",BG:"EU",LU:"EU",
+ EE:"EU",LV:"EU",LT:"EU",MT:"EU",CY:"EU"};
+const LITHIUM_TXT = n => `${n} PKGS OF LITHIUM ION BATTERIES IN COMPLIANCE WITH SECTION II OF PI 967`;
+const MAWB_RE = /\b\d{3}-?\s?\d{4}\s?\d{4}\b/;
+
+const $ = id => document.getElementById(id);
+let MODE="check", TYPE="HAWB", manualRegion=false, manualType=false;
+
+/* ---------- 모드 / 타입 토글 ---------- */
+$("modeSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{
+  MODE=b.dataset.mode;
+  $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  $("modeHint").textContent = MODE==="check" ? "체크빌(PDF/이미지) → 자동 추출·검증" : "CI/PL(엑셀) → 하우스로 자동 입력";
+  if(MODE==="input"){ manualType=false; autoSetType("HAWB","CI/PL"); }
+});
+$("typeSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{ manualType=true; setType(b.dataset.type); $("autoBadge").style.display="none"; });
+function setType(t){
+  TYPE=t;
+  $("typeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x.dataset.type===t));
+  $("noLabel").textContent=t; $("noLabel2").textContent=t;
+  const pill=$("typePill"); pill.textContent=t; pill.className="typePill "+(t==="MAWB"?"m":"h");
+}
+function autoSetType(t,reason){
+  if(manualType) return;
+  setType(t);
+  const b=$("autoBadge"); b.style.display="inline-block"; b.textContent="자동감지: "+t+(reason?(" ("+reason+")"):"");
+}
+
+/* ---------- 파일 업로드 ---------- */
+const drop=$("drop"), fileInput=$("file");
+drop.onclick=()=>fileInput.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("hot");};
+drop.ondragleave=()=>drop.classList.remove("hot");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("hot");if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);};
+fileInput.onchange=e=>{if(e.target.files[0])handleFile(e.target.files[0]);};
+function setStatus(html,cls){ $("status").innerHTML = html ? `<div class="${cls||'busybox'}">${html}</div>` : ""; }
+
+function handleFile(f){
+  setStatus("");
+  detectFromFilename(f.name);
+  const ext=f.name.split(".").pop().toLowerCase();
+  const reader=new FileReader();
+  reader.onload=ev=>{ if(ext==="pdf") handlePdf(ev.target.result,f.name); else handleExcel(ev.target.result,f.name); };
+  reader.readAsArrayBuffer(f);
+}
+function detectFromFilename(name){
+  const digits=(name.match(/\d[\d-\s]{9,}\d/g)||[]).map(s=>s.replace(/\D/g,"")).find(s=>s.length>=11);
+  if(digits && digits.length>=11){
+    const m=digits.slice(0,11), formatted=m.slice(0,3)+"-"+m.slice(3);
+    if(!$("awb_no").value) $("awb_no").value=formatted;
+    if(MODE==="check") autoSetType("MAWB","파일명 "+formatted);
+  }
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ----- 엑셀: 브라우저에서 파싱 (Gemini 불필요) ----- */
+function handleExcel(buf,name){
+  try{
+    const wb=XLSX.read(buf,{type:"array"});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:""});
+    const flat=rows.map(r=>r.join(" ")).join("\n");
+    if(MODE==="check"){ detectTypeFromText(flat); } else { autoSetType("HAWB","CI/PL"); }
+    extractFromRows(rows); autoRegion();
+    setStatus("✔ 엑셀에서 자동 추출했습니다. 오른쪽에서 확인·수정하세요.","okbox");
+    drop.querySelector("b").textContent="✔ "+name;
+  }catch(err){ setStatus("엑셀을 읽지 못했어요: "+esc(err.message),"warnbox"); }
+}
+
+/* ----- PDF: 서버(/api/extract)로 보내 Gemini가 추출 ----- */
+async function handlePdf(buf,name){
+  drop.querySelector("b").textContent="✔ "+name;
+  setStatus("🤖 서버(Gemini)가 PDF를 읽는 중… (수 초 소요)","busybox");
+  try{
+    const obj=await serverExtract(toBase64(buf),"application/pdf");
+    if(obj.error){ setStatus("추출 오류: "+esc(obj.error)+(obj.detail?("<br>"+esc(obj.detail)):""),"warnbox"); return; }
+    applyExtract(obj);
+    setStatus("✔ 서버(Gemini)가 추출했습니다. 확인·수정하세요.","okbox");
+  }catch(err){
+    setStatus("서버 호출 실패: "+esc(err.message)+"<br>Vercel 환경변수(GEMINI_API_KEY) 설정을 확인하세요. (로컬 file:// 로 열면 서버가 없어 작동하지 않습니다 — 배포 URL에서 사용)","warnbox");
+  }
+}
+function toBase64(buf){ let s="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s); }
+async function serverExtract(base64,mime){
+  const res=await fetch("/api/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({base64,mime})});
+  const j=await res.json().catch(()=>({error:"응답 파싱 실패 ("+res.status+")"}));
+  if(!res.ok && !j.error) throw new Error(res.status+"");
+  return j;
+}
+function applyExtract(o){
+  const map={awb_no:"awb_no",invoice_no:"h_inv",carrier:"m_carrier",flight:"m_flight",onboard:"m_onboard",
+    departure:"m_dep",via_to:"m_via",by:"m_by",destination:"m_dest",shipper:"h_shipper",consignee:"h_consignee",
+    notify:"h_notify",marks:"h_marks",description:"h_desc",hs_code:"h_hs",package:"h_pkg",gross_wt:"h_gwt",
+    tel:"v_tel",zip:"v_zip",email:"v_email",eori:"v_eori",tax_id:"v_tax",form_no:"v_form",ba_no:"v_ba"};
+  Object.entries(map).forEach(([k,id])=>{ if(o[k]!=null&&o[k]!=="") $(id).value=o[k]; });
+  if(MODE==="check"){ if(o.is_mawb===true)autoSetType("MAWB","Gemini"); else if(o.is_mawb===false)autoSetType("HAWB","Gemini"); }
+  if(o.dest_country && CC2REGION[String(o.dest_country).toUpperCase()] && !manualRegion){
+    $("region").value=CC2REGION[String(o.dest_country).toUpperCase()]; $("regionAuto").style.display="inline-block";
+  }
+  autoRegion(); runValidation();
+}
+
+/* ---------- 타입/지역 감지 ---------- */
+function detectTypeFromText(text){
+  const m=text.match(MAWB_RE);
+  if(m) autoSetType("MAWB","번호 "+m[0].trim()); else autoSetType("HAWB","MAWB번호 없음");
+}
+function detectRegion(text){
+  const T=(text||"").toUpperCase();
+  if(/\bTURKEY\b|TURKIYE|T[UÜ]RK[İI]YE|ISTANBUL/.test(T)) return "TR";
+  if(/NIGERIA|LAGOS|ABUJA/.test(T)) return "NG";
+  if(/INDONESIA|JAKARTA|SURABAYA/.test(T)) return "ID";
+  if(/BANGLADESH|DHAKA|CHITTAGONG/.test(T)) return "BD";
+  if(/\bCHINA\b|SHENZHEN|SHANGHAI|GUANGZHOU|BEIJING|NINGBO|HONG KONG/.test(T)) return "CN";
+  if(/\bU\.?S\.?A\.?\b|UNITED STATES|\b[A-Z]{2}\s?\d{5}(-\d{4})?\b/.test(T)) return "US";
+  if(EU_LIST.some(c=>T.includes(c))) return "EU";
+  return "";
+}
+function autoRegion(){
+  if(manualRegion) return;
+  const r=detectRegion($("h_consignee").value+" "+$("m_dest").value+" "+$("h_notify").value);
+  if(r){ $("region").value=r; $("regionAuto").style.display="inline-block"; }
+  runValidation();
+}
+$("region").addEventListener("change",()=>{ manualRegion=true; $("regionAuto").style.display="none"; runValidation(); });
+["h_consignee","m_dest","h_notify"].forEach(id=>$(id).addEventListener("input",autoRegion));
+
+/* ---------- 추출 (엑셀 행) ---------- */
+function extractFromRows(rows){
+  const cells=[]; rows.forEach((r,ri)=>r.forEach((c,ci)=>{const t=String(c).trim();if(t)cells.push({ri,ci,t});}));
+  const norm=s=>s.toLowerCase().replace(/^\s*\d+\s*[.)]\s*/,"").replace(/[:：]/g,"").trim();
+  const isLabel=(t,keys)=>keys.some(k=>norm(t)===k||norm(t).startsWith(k));
+  const SHIP=["seller","shipper","buyer","exporter","수출자","송하인"];
+  const CNEE=["consignee","수하인"], NOTI=["notify","notify party"];
+  const ANY=[...SHIP,...CNEE,...NOTI,"port of loading","final destination","description of good","description","invoice"];
+  const dropTokens=["name","address","tel","fax","payment term","incoterms","hs.code","hs code","idx","brand","quantity"];
+  const idxOf=keys=>cells.findIndex(c=>isLabel(c.t,keys));
+  function blockAfter(startKeys){
+    const s=idxOf(startKeys); if(s<0)return"";
+    let out=[];
+    for(let i=s+1;i<cells.length;i++){
+      if(isLabel(cells[i].t,ANY))break;
+      const t=cells[i].t; if(dropTokens.includes(norm(t)))continue;
+      out.push(t); if(out.length>=6)break;
+    }
+    return out.join("\n");
+  }
+  fill("h_shipper",blockAfter(SHIP)); fill("h_consignee",blockAfter(CNEE)); fill("h_notify",blockAfter(NOTI));
+  const invCell=cells.find(c=>/inv(oice)?\s*no|no\.\s*:/i.test(c.t)&&/\d/.test(c.t))||cells.find(c=>/^IN\d{5,}/i.test(c.t));
+  if(invCell){const m=invCell.t.match(/([A-Z]{0,3}\d{5,}[A-Z0-9-]*)/i);if(m)fill("h_inv",m[1]);}
+  const hsCell=cells.find(c=>/^\d{4}\.\d{2}\.?\d{0,4}$/.test(c.t))||cells.find(c=>/^\d{6,10}$/.test(c.t)&&c.t.length>=6);
+  if(hsCell)fill("h_hs",hsCell.t);
+  const email=cells.map(c=>c.t.match(/[\w.\-]+@[\w.\-]+\.\w+/)).find(Boolean); if(email)fill("v_email",email[0]);
+  const tel=cells.map(c=>{const m=c.t.match(/(?:tel|전화|phone)[:\s]*([+\d][\d\s\-()]{6,})/i);return m?m[1].trim():null;}).find(Boolean); if(tel)fill("v_tel",tel);
+  const descStart=cells.findIndex(c=>/description of good|품명|description/i.test(c.t));
+  if(descStart>=0){
+    let items=[];
+    for(let i=descStart+1;i<cells.length;i++){
+      const t=cells[i].t;
+      if(isLabel(t,["brand","hs code","hs.code","quantity","unit price","total","amount","authorized"]))continue;
+      if(/^\d[\d.,]*$/.test(t)||/pcs$|kg$|usd$/i.test(t)||t.length<4)continue;
+      items.push(t); if(items.length>=8)break;
+    }
+    if(items.length)fill("h_desc",items.join("\n"));
+  }
+  runValidation();
+}
+function fill(id,val){ if(val && !$(id).value) $(id).value=val; }
+
+/* ---------- 리튬 ---------- */
+$("liBtn").onclick=()=>{
+  const n=$("li_qty").value.trim();
+  if(!n){$("li_qty").focus();alert("개수를 먼저 입력하세요.");return;}
+  const d=$("h_desc"); d.value=(d.value?d.value.replace(/\s*$/,"")+"\n":"")+LITHIUM_TXT(n); runValidation();
+};
+
+/* ---------- 검증 ---------- */
+["region","v_tel","v_zip","v_email","v_eori","v_tax","v_form","v_ba","h_hs","h_desc"]
+  .forEach(id=>$(id).addEventListener("input",runValidation));
+function runValidation(){
+  const box=$("valList"), region=$("region").value; let items=[];
+  if(region&&REGION_RULES[region]){
+    REGION_RULES[region].req.forEach(([id,name])=>{
+      const ok=$(id).value.trim()!=="";
+      items.push(`<div class="vitem ${ok?'ok':'bad'}"><span class="ic">${ok?'✔':'✕'}</span><span><b>${name}</b> ${ok?'입력됨':'누락 — '+REGION_RULES[region].label+' 필수값'}</span></div>`);
+    });
+  } else items.push(`<div class="vitem"><span>도착지역을 선택(또는 자동감지)하면 필수값을 체크합니다.</span></div>`);
+  const desc=$("h_desc").value.toUpperCase();
+  const hits=VAGUE_TERMS.filter(t=>new RegExp("\\b"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(desc));
+  if(desc.trim()!==""){
+    if(hits.length) items.push(`<div class="vitem bad"><span class="ic">⚠</span><span><b>광의어 감지</b> — 구체적 품명 필요<br>${hits.map(h=>`<span class="badge bad">${h}</span>`).join("")}</span></div>`);
+    else items.push(`<div class="vitem ok"><span class="ic">✔</span><span>품명 광의어 없음</span></div>`);
+  }
+  box.innerHTML=items.join("");
+}
+
+/* ---------- 추출/미리보기 ---------- */
+function collect(){
+  return {
+    type:TYPE, mode:MODE,
+    awb:{ no:$("awb_no").value, invoice_no:$("h_inv").value, carrier:$("m_carrier").value,
+      flight:$("m_flight").value, onboard:$("m_onboard").value, departure:$("m_dep").value,
+      via_to:$("m_via").value, by:$("m_by").value, destination:$("m_dest").value },
+    party:{ shipper:$("h_shipper").value, consignee:$("h_consignee").value, notify:$("h_notify").value },
+    cargo:{ marks:$("h_marks").value, description:$("h_desc").value, hs_code:$("h_hs").value,
+      package:$("h_pkg").value, gross_wt:$("h_gwt").value },
+    validation:{ region:$("region").value, tel:$("v_tel").value, zip:$("v_zip").value,
+      email:$("v_email").value, eori:$("v_eori").value, tax_id:$("v_tax").value,
+      form_no:$("v_form").value, ba_no:$("v_ba").value }
+  };
+}
+$("previewBtn").onclick=()=>{const o=$("out");o.style.display="block";o.textContent=JSON.stringify(collect(),null,2);};
+$("exportBtn").onclick=()=>{
+  if(TYPE==="MAWB"){ if(!confirm("추출 대상은 보통 HAWB(하우스)입니다. 지금 종류가 MAWB인데 그대로 추출할까요?")) return; }
+  const data=collect();
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=TYPE+"_"+(data.awb.no||data.awb.invoice_no||"export")+".json"; a.click();
+};
+$("clearBtn").onclick=()=>{document.querySelectorAll("input,textarea").forEach(el=>{if(el.type!=="file")el.value="";});manualRegion=false;manualType=false;$("regionAuto").style.display="none";$("autoBadge").style.display="none";runValidation();};
+
+setType("HAWB"); runValidation();
+</script>
+</body>
+</html>
