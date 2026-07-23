@@ -193,6 +193,10 @@
         </fieldset>
         <fieldset style="margin:0">
           <legend>Description / Mark</legend>
+          <div class="g2 mb">
+            <div><label class="f">Invoice No <span id="invNone" style="color:#ffcf6b;display:none">· 서류에 없음</span></label><input id="b_inv" placeholder="없으면 비워두기"></div>
+            <div style="display:flex;align-items:flex-end"><button class="btn wide" id="invBtn">품명에 INV 추가</button></div>
+          </div>
           <div class="inline mb" style="justify-content:space-between">
             <label class="f" style="margin:0">Description (품명) — 서류 그대로 전체</label>
             <span class="inline">
@@ -274,7 +278,7 @@ const CONSOL_TXT = "CONSOLIDATION SHIPMENT AS\nPER ATTACHED MANIFEST";
 const LITHIUM_TXT = n => `" ${n} PKGS OF LITHIUM ION\nBATTERIES IN COMPLIANCE WITH\nSECTION II OF PI 967"`;
 const MAWB_RE = /\b\d{3}-?\s?\d{4}\s?\d{4}\b/;
 
-const FIELDS = ["b_mawb","b_dest","b_via","b_by","p_shipper","p_consignee","p_notify","d_desc","d_marks",
+const FIELDS = ["b_mawb","b_inv","b_dest","b_via","b_by","p_shipper","p_consignee","p_notify","d_desc","d_marks",
  "as_name","as_city","as_country","as_zip","as_tel","as_street","as_email",
  "ac_name","ac_state","ac_city","ac_zip","ac_country","ac_street","ac_tel","ac_email","ac_tax",
  "an_name","an_city","an_country","an_zip","an_street","x_form","x_ba"];
@@ -301,6 +305,7 @@ function loadJobToForm(j){
   setTypeUI(j.type||"HAWB");
   $("regionAuto").style.display = j.region ? "inline-block" : "none";
   $("curName").textContent = j.name ? ("· "+j.name) : "";
+  refreshInvHint();
   runValidation();
 }
 function selectJob(id){ syncFormToJob(); CUR=id; const j=curJob(); if(j) loadJobToForm(j); renderJobs(); }
@@ -433,7 +438,7 @@ async function serverExtract(base64,mime,text){
   return await res.json().catch(()=>({error:"응답 파싱 실패 ("+res.status+")"}));
 }
 const MAP={
-  awb_no:"b_mawb", destination:"b_dest", via_to:"b_via", by:"b_by",
+  awb_no:"b_mawb", invoice_no:"b_inv", destination:"b_dest", via_to:"b_via", by:"b_by",
   shipper:"p_shipper", consignee:"p_consignee", notify:"p_notify",
   description:"d_desc", marks:"d_marks",
   shipper_name:"as_name", shipper_city:"as_city", shipper_street:"as_street", shipper_zip:"as_zip", shipper_country:"as_country", shipper_tel:"as_tel", shipper_email:"as_email",
@@ -476,6 +481,18 @@ $("region").addEventListener("change",()=>{ const j=curJob(); if(j)j.manualRegio
 /* 폼 → 현재 건 자동 저장 */
 FIELDS.forEach(id=>$(id).addEventListener("input",()=>{ syncFormToJob(); }));
 
+/* ================= 인보이스 번호 ================= */
+$("invBtn").onclick=()=>{
+  const v=$("b_inv").value.trim();
+  if(!v){ $("b_inv").focus(); alert("인보이스 번호가 없습니다. (서류에 없으면 생략하셔도 됩니다)"); return; }
+  const d=$("d_desc");
+  if(d.value.toUpperCase().includes(v.toUpperCase())){ alert("이미 품명에 들어가 있습니다."); return; }
+  d.value=(d.value?d.value.replace(/\s*$/,"")+"\n":"")+"INV NO : "+v;
+  syncFormToJob(); runValidation();
+};
+function refreshInvHint(){ $("invNone").style.display = $("b_inv").value.trim()? "none":"inline"; }
+$("b_inv").addEventListener("input",refreshInvHint);
+
 /* ================= 리튬 ================= */
 $("liBtn").onclick=()=>{
   const n=$("li_qty").value.trim();
@@ -517,7 +534,7 @@ function buildData(job){
   const f=k=>job.fields[k]||"";
   return {
     type:job.type, mode:MODE, source:job.name,
-    basic:{ no:f("b_mawb"), destination:f("b_dest"), via_to:f("b_via"), by:f("b_by") },
+    basic:{ no:f("b_mawb"), invoice_no:f("b_inv"), destination:f("b_dest"), via_to:f("b_via"), by:f("b_by") },
     party:{ shipper:f("p_shipper"), consignee:f("p_consignee"), notify:f("p_notify") },
     description:f("d_desc"), marks:f("d_marks"),
     ams:{

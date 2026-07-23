@@ -4,7 +4,7 @@
 
 const GEM_PROMPT = `You extract fields from a freight document (air waybill / commercial invoice / packing list) for a forwarder.
 Return ONLY a JSON object, no markdown. Use "" if unknown. Keys:
-awb_no, destination, via_to, by,
+awb_no, invoice_no, destination, via_to, by,
 shipper, consignee, notify   (each = full multi-line name+address block, verbatim),
 description   (the FULL goods description text exactly as written, do NOT summarize or pick items; keep line breaks),
 marks   (shipping marks, verbatim),
@@ -23,6 +23,11 @@ Priority when several appear together:
 2) On a commercial invoice with only SELLER and BUYER, treat SELLER as shipper and BUYER as consignee.
 3) If SOLD TO and SHIP TO both exist, SHIP TO is the consignee.
 4) Ignore the forwarder's own company (KOOYANG / 국양로지텍 / KOOYANG LOGITECH) — never use it as shipper/consignee/notify.
+invoice_no: the document's invoice/reference number. Labels vary a lot — accept any of:
+INVOICE NO, INVOICE NUMBER, INV NO, INV#, No., NO. :, P/I NO, PROFORMA INVOICE NO,
+COMMERCIAL INVOICE NO, ORDER NO, PO NO, PURCHASE ORDER, REFERENCE NO, REF NO, 송장번호, 인보이스번호.
+Many documents have NO invoice number at all — in that case return "" (do NOT use the AWB number, a date, or any other number as a substitute).
+
 If a value truly is not in the document, return "" — never guess or invent.
 
 Rules: shipper_city = shipper's city FULL name (e.g. SHENZHEN, SHANGHAI, HONG KONG).
