@@ -823,7 +823,24 @@ function download(obj,filename){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),3000);
 }
-const fname=d=>`${d.type}_${(d.basic.no||"export").replace(/[\\/:*?"<>|]/g,"_")}.json`;
+/* 파일명 규칙
+   · 체크빌(MAWB/HAWB 번호 있음) → 그 번호로
+   · 서류(CI/PL 등 번호 없음)   → HAWB + 오늘날짜 + 일련번호 */
+function todayStr(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
+  return ""+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate()); }
+const SEQ_KEY="bill_seq";
+function seqNext(){
+  const t=todayStr(); let s={d:"",n:0};
+  try{ s=JSON.parse(localStorage.getItem(SEQ_KEY)||'{"d":"","n":0}'); }catch(e){}
+  if(s.d!==t) s={d:t,n:0};
+  s.n++; try{ localStorage.setItem(SEQ_KEY,JSON.stringify(s)); }catch(e){}
+  return String(s.n).padStart(3,"0");
+}
+function fname(d){
+  const no=String(d.basic.no||"").trim();
+  if(no) return `${d.type}_${no.replace(/[\\/:*?"<>|]/g,"_")}.json`;
+  return `${d.type}${todayStr()}${seqNext()}.json`;
+}
 $("exportBtn").onclick=()=>{ syncFormToJob(); const j=curJob(); if(!j)return; const d=buildData(j); download(d,fname(d)); };
 $("exportAllBtn").onclick=()=>{
   syncFormToJob();
@@ -831,7 +848,7 @@ $("exportAllBtn").onclick=()=>{
 };
 $("exportOneBtn").onclick=()=>{
   syncFormToJob();
-  download({count:JOBS.length, items:JOBS.map(buildData)}, `BILLS_${JOBS.length}건.json`);
+  download({count:JOBS.length, items:JOBS.map(buildData)}, `BILLS_${todayStr()}_${JOBS.length}건.json`);
 };
 $("previewBtn").onclick=()=>{ syncFormToJob(); const o=$("out"); o.style.display="block"; const j=curJob(); o.textContent=j?JSON.stringify(buildData(j),null,2):""; };
 $("clearBtn").onclick=()=>{ const j=curJob(); if(!j)return; j.fields={}; j.region=""; j.manualType=false; j.manualRegion=false; loadJobToForm(j); renderJobs(); };
