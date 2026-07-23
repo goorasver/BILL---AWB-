@@ -205,7 +205,17 @@
             </span>
           </div>
           <textarea id="d_desc" style="min-height:132px" class="mb"></textarea>
-          <div><label class="f">Marks &amp; Numbers (SHIPPING MARK)</label><textarea id="d_marks" style="min-height:56px"></textarea></div>
+          <div class="inline mb" style="justify-content:space-between">
+            <label class="f" style="margin:0">Marks &amp; Numbers (SHIPPING MARK)</label>
+            <span class="inline" id="shapeBtns">
+              <button class="btn" data-shape="IN DIA">◇ IN DIA</button>
+              <button class="btn" data-shape="IN CIR">○ IN CIR</button>
+              <button class="btn" data-shape="IN TRI">△ IN TRI</button>
+              <button class="btn" data-shape="IN SQ">□ IN SQ</button>
+            </span>
+          </div>
+          <textarea id="d_marks" style="min-height:56px"></textarea>
+          <div class="hint">도형 안 글자 마크는 <b>글자 → 다음 줄에 도형 표기</b> (예: HOHODANG / IN DIA)</div>
         </fieldset>
       </div>
       <div class="hint" style="margin:-4px 0 12px">🔋 개수 입력 후 클릭 → " " 로 감싸 3줄 삽입: <b>" 40 PKGS OF LITHIUM ION / BATTERIES IN COMPLIANCE WITH / SECTION II OF PI 967"</b></div>
@@ -480,6 +490,13 @@ $("region").addEventListener("change",()=>{ const j=curJob(); if(j)j.manualRegio
 
 /* 폼 → 현재 건 자동 저장 */
 FIELDS.forEach(id=>$(id).addEventListener("input",()=>{ syncFormToJob(); }));
+
+/* ================= 마크 도형 표기 ================= */
+$("shapeBtns").querySelectorAll("button").forEach(b=> b.onclick=()=>{
+  const m=$("d_marks");
+  m.value=(m.value?m.value.replace(/\s*$/,"")+"\n":"")+b.dataset.shape;
+  m.focus(); syncFormToJob();
+});
 
 /* ================= 인보이스 번호 ================= */
 $("invBtn").onclick=()=>{

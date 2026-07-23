@@ -7,7 +7,7 @@ Return ONLY a JSON object, no markdown. Use "" if unknown. Keys:
 awb_no, invoice_no, destination, via_to, by,
 shipper, consignee, notify   (each = full multi-line name+address block, verbatim),
 description   (the FULL goods description text exactly as written, do NOT summarize or pick items; keep line breaks),
-marks   (shipping marks, verbatim),
+marks   (shipping marks — see the SHIPPING MARK rule below),
 shipper_name, shipper_city, shipper_street, shipper_zip, shipper_country, shipper_tel, shipper_email,
 consignee_name, consignee_state, consignee_city, consignee_street, consignee_zip, consignee_country, consignee_tel, consignee_email, consignee_taxid,
 notify_name, notify_city, notify_street, notify_zip, notify_country,
@@ -27,6 +27,14 @@ invoice_no: the document's invoice/reference number. Labels vary a lot — accep
 INVOICE NO, INVOICE NUMBER, INV NO, INV#, No., NO. :, P/I NO, PROFORMA INVOICE NO,
 COMMERCIAL INVOICE NO, ORDER NO, PO NO, PURCHASE ORDER, REFERENCE NO, REF NO, 송장번호, 인보이스번호.
 Many documents have NO invoice number at all — in that case return "" (do NOT use the AWB number, a date, or any other number as a substitute).
+
+SHIPPING MARK rule: transcribe the mark as text. If the mark is text drawn INSIDE a shape,
+put the text on its own line and the shape notation on the next line:
+  diamond/rhombus -> "IN DIA", circle -> "IN CIR", triangle -> "IN TRI", square -> "IN SQ", oval -> "IN OVAL".
+Example — the word HOHODANG drawn inside a diamond must be returned exactly as:
+HOHODANG
+IN DIA
+Keep any other mark lines (port, case numbers, C/NO. etc.) on following lines, verbatim.
 
 If a value truly is not in the document, return "" — never guess or invent.
 
