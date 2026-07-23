@@ -14,6 +14,17 @@ notify_name, notify_city, notify_street, notify_zip, notify_country,
 eori, form_no, ba_no,
 is_mawb (true if a master air waybill number = 3-digit airline prefix + 8 digits appears at top-right, else false),
 dest_country (destination ISO 2-letter country code).
+IMPORTANT — labels and positions differ by company. Match by MEANING, never by exact label text or cell position:
+- shipper (sender/exporter): SHIPPER, CONSIGNOR, EXPORTER, SELLER, SUPPLIER, VENDOR, FROM, 송하인, 수출자, 발송인
+- consignee (receiver/importer): CONSIGNEE, SHIP TO, DELIVER TO, DELIVERY ADDRESS, IMPORTER, BUYER, SOLD TO, MESSRS, 수하인, 수입자
+- notify: NOTIFY, NOTIFY PARTY, ALSO NOTIFY, 통지처
+Priority when several appear together:
+1) An explicit SHIPPER / CONSIGNEE / NOTIFY label always wins over SELLER / BUYER / SOLD TO.
+2) On a commercial invoice with only SELLER and BUYER, treat SELLER as shipper and BUYER as consignee.
+3) If SOLD TO and SHIP TO both exist, SHIP TO is the consignee.
+4) Ignore the forwarder's own company (KOOYANG / 국양로지텍 / KOOYANG LOGITECH) — never use it as shipper/consignee/notify.
+If a value truly is not in the document, return "" — never guess or invent.
+
 Rules: shipper_city = shipper's city FULL name (e.g. SHENZHEN, SHANGHAI, HONG KONG).
 consignee_state = state/province ABBREVIATION (e.g. NY, CA for US). country = ISO 2-letter code (CN, US, ...).
 tel/zip/email in top-level and consignee_* = the CONSIGNEE's.
