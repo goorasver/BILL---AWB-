@@ -631,44 +631,65 @@ async function memPut(key,rec){
   }
   writeLocal(); updateMemMode(); return "local";
 }
-/* 화주 키: AMS Shipper Name 우선, 없으면 Shipper 첫 줄 (안정적으로 매칭되도록) */
-function shipperKey(get){
-  let n=String(get("as_name")||"").trim();
-  if(!n) n=String(get("p_shipper")||"").split(/\r?\n/)[0]||"";
-  return n.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,20);
+/* 화주 키: 줄바꿈·공백·기호를 모두 무시하고 만들어 어떤 상태에서도 매칭되게.
+   AMS Shipper Name / Shipper 원문 두 가지로 각각 키를 만들어 둘 다 시도. 지역별로 따로 저장. */
+const normKey = s => String(s||"").replace(/[^A-Za-z0-9]/g,"").toUpperCase().slice(0,20);
+function shipKeys(get){
+  return [normKey(get("as_name")), normKey(get("p_shipper"))].filter(k=>k.length>=4);
 }
+function memKeys(get,region){
+  const r=region||"-";
+  return shipKeys(get).map(s=>s+"@"+r);
+}
+/* 화면에서 쓰는 대표 키 (표시용) */
+function shipperKey(get){ const k=shipKeys(get); return k.length?k[0]:""; }
 $("memSaveBtn").onclick=async()=>{
   syncFormToJob();
-  const key=shipperKey(id=>$(id).value);
-  if(key.length<4){ alert("Shipper 정보가 있어야 기억할 수 있어요."); return; }
+  const get=id=>$(id).value;
+  const region=$("region").value||"-";
+  const keys=memKeys(get,region);
+  if(!keys.length){ alert("Shipper 정보가 있어야 기억할 수 있어요.\n(Shipper 또는 AMS Shipper Name을 먼저 입력)"); return; }
   const rec={}; MEM_FIELDS.forEach(id=>{ const v=$(id).value.trim(); if(v) rec[id]=v; });
-  const where=await memPut(key,rec);
-  alert(where==="server"
-    ? "이 화주의 입력 방식을 기억했습니다. (팀 전체 공유)\n다음에 같은 화주 서류를 넣으면 빈 칸이 자동으로 채워집니다."
-    : "이 화주의 입력 방식을 기억했습니다. (이 브라우저에만 저장)\n팀 공유를 하려면 Vercel 저장소(KV) 연결이 필요합니다.");
+  let where="local";
+  for(const k of keys){ where=await memPut(k,rec); }   // 이름/원문 두 키 모두에 저장
+  alert((where==="server"?"[팀 전체 공유] ":"[이 브라우저에만] ")
+    +"기억 완료\n\n화주키: "+keys[0]
+    +"\n지역: "+region
+    +"\n\n다음에 같은 화주+지역 서류를 넣으면 자동으로 채워집니다.");
   $("memTag").textContent="📌 기억됨"; $("memTag").style.display="inline-block";
 };
 /* 화주 고정정보(AMS Shipper)는 덮어쓰고, 건마다 달라지는 값은 비었을 때만 채움 */
 const MEM_OVERWRITE=["as_name","as_city","as_country","as_zip","as_tel","as_street","as_email"];
 $("memMode").onclick=()=>{
-  const keys=Object.keys(MEM);
-  const cur=shipperKey(id=>$(id).value);
+  const stored=Object.keys(MEM);
+  const get=id=>$(id).value;
+  const cand=memKeys(get,$("region").value||"-");
+  const hit=cand.find(k=>MEM[k]) || shipKeys(get).map(s=>stored.find(k=>k.startsWith(s+"@"))).find(Boolean);
   alert(
     (MEM_MODE==="server"?"[팀 공유 저장]":"[이 브라우저에만 저장]")+"\n"+
-    "기억된 화주 "+keys.length+"곳\n"+(keys.length?("· "+keys.join("\n· ")):"(없음)")+
-    "\n\n현재 화면의 화주 키: "+(cur||"(Shipper 정보 없음)")+
-    (cur&&MEM[cur]?"  ← 기억 있음":"  ← 기억 없음")
+    "기억된 항목 "+stored.length+"개 (화주@지역)\n"+(stored.length?("· "+stored.join("\n· ")):"(없음)")+
+    "\n\n[현재 화면]\n찾는 키: "+(cand.length?cand.join(" 또는 "):"(Shipper 정보 없음)")+
+    "\n결과: "+(hit?("일치 → "+hit):"일치하는 기억 없음")
   );
 };
 function applyMemory(job){
-  const key=shipperKey(id=>job.fields[id]||"");
-  if(key.length<4) return false;
-  const rec=MEM[key]; if(!rec) return false;
+  const get=id=>job.fields[id]||"";
+  const ships=shipKeys(get); if(!ships.length) return false;
+  // 1) 같은 화주 + 같은 지역  2) 없으면 같은 화주의 다른 지역 기록
+  let rec=null, used="";
+  for(const k of memKeys(get, job.region)){ if(MEM[k]){ rec=MEM[k]; used=k; break; } }
+  if(!rec){
+    for(const s of ships){
+      const hit=Object.keys(MEM).find(k=>k.startsWith(s+"@"));
+      if(hit){ rec=MEM[hit]; used=hit; break; }
+    }
+  }
+  if(!rec) return false;
   Object.entries(rec).forEach(([id,v])=>{
     if(MEM_OVERWRITE.includes(id)) job.fields[id]=v;
     else if(!(job.fields[id]||"").trim()) job.fields[id]=v;
   });
-  job.memApplied=true; job.memKey=key; return true;
+  job.memApplied=true; job.memKey=used; return true;
 }
 
 /* ================= 마크 도형 표기 ================= */
@@ -827,19 +848,19 @@ function download(obj,filename){
    · 체크빌(MAWB/HAWB 번호 있음) → 그 번호로
    · 서류(CI/PL 등 번호 없음)   → HAWB + 오늘날짜 + 일련번호 */
 function todayStr(){ const d=new Date(), p=n=>String(n).padStart(2,"0");
-  return ""+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate()); }
+  return p(d.getMonth()+1)+p(d.getDate()); }              // MMDD (예: 0726)
 const SEQ_KEY="bill_seq";
 function seqNext(){
   const t=todayStr(); let s={d:"",n:0};
   try{ s=JSON.parse(localStorage.getItem(SEQ_KEY)||'{"d":"","n":0}'); }catch(e){}
   if(s.d!==t) s={d:t,n:0};
   s.n++; try{ localStorage.setItem(SEQ_KEY,JSON.stringify(s)); }catch(e){}
-  return String(s.n).padStart(3,"0");
+  return String(s.n).padStart(2,"0");                     // 01, 02 …
 }
 function fname(d){
   const no=String(d.basic.no||"").trim();
-  if(no) return `${d.type}_${no.replace(/[\\/:*?"<>|]/g,"_")}.json`;
-  return `${d.type}${todayStr()}${seqNext()}.json`;
+  if(no) return `${d.type}-${no.replace(/[\\/:*?"<>|]/g,"-")}.json`;   // 체크빌: 번호로
+  return `${d.type}-${todayStr()}-${seqNext()}.json`;                  // 서류: HAWB-0726-01
 }
 $("exportBtn").onclick=()=>{ syncFormToJob(); const j=curJob(); if(!j)return; const d=buildData(j); download(d,fname(d)); };
 $("exportAllBtn").onclick=()=>{
@@ -848,7 +869,7 @@ $("exportAllBtn").onclick=()=>{
 };
 $("exportOneBtn").onclick=()=>{
   syncFormToJob();
-  download({count:JOBS.length, items:JOBS.map(buildData)}, `BILLS_${todayStr()}_${JOBS.length}건.json`);
+  download({count:JOBS.length, items:JOBS.map(buildData)}, `BILLS-${todayStr()}-${JOBS.length}건.json`);
 };
 $("previewBtn").onclick=()=>{ syncFormToJob(); const o=$("out"); o.style.display="block"; const j=curJob(); o.textContent=j?JSON.stringify(buildData(j),null,2):""; };
 $("clearBtn").onclick=()=>{ const j=curJob(); if(!j)return; j.fields={}; j.region=""; j.manualType=false; j.manualRegion=false; loadJobToForm(j); renderJobs(); };
