@@ -8,9 +8,14 @@
 const STORE_KEY = "bill_shipper_memory";
 
 function cfg() {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  return url && token ? { url, token } : null;
+  // Vercel KV / Upstash Redis 어느 쪽으로 연결해도 잡히도록 여러 이름을 확인
+  const url = process.env.KV_REST_API_URL
+    || process.env.UPSTASH_REDIS_REST_URL
+    || process.env.REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN
+    || process.env.UPSTASH_REDIS_REST_TOKEN
+    || process.env.REDIS_REST_TOKEN;
+  return url && token ? { url: url.replace(/\/+$/, ""), token } : null;
 }
 
 async function kvGet(c) {
