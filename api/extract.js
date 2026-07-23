@@ -28,12 +28,11 @@ INVOICE NO, INVOICE NUMBER, INV NO, INV#, No., NO. :, P/I NO, PROFORMA INVOICE N
 COMMERCIAL INVOICE NO, ORDER NO, PO NO, PURCHASE ORDER, REFERENCE NO, REF NO, 송장번호, 인보이스번호.
 Many documents have NO invoice number at all — in that case return "" (do NOT use the AWB number, a date, or any other number as a substitute).
 
-SHIPPING MARK rule: transcribe the mark as text. If the mark is text drawn INSIDE a shape,
-put the text on its own line and the shape notation on the next line:
-  diamond/rhombus -> "IN DIA", circle -> "IN CIR", triangle -> "IN TRI", square -> "IN SQ", oval -> "IN OVAL".
-Example — the word HOHODANG drawn inside a diamond must be returned exactly as:
+SHIPPING MARK rule: transcribe the mark as text. If the text is drawn INSIDE a diamond/rhombus,
+put the text on its own line and "IN DIA" on the next line. Example — HOHODANG inside a diamond:
 HOHODANG
 IN DIA
+For any other shape, just transcribe the text with no shape notation.
 Keep any other mark lines (port, case numbers, C/NO. etc.) on following lines, verbatim.
 
 If a value truly is not in the document, return "" — never guess or invent.
