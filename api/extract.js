@@ -92,6 +92,21 @@ async function generate(model, key, base64, mime, text) {
   return r;
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// 일시적 과부하(503) / 요청폭주(429) / 서버오류(500)면 간격을 두고 재시도
+async function generateWithRetry(model, key, base64, mime, text) {
+  const delays = [900, 2200, 4500];
+  let r;
+  for (let i = 0; i <= delays.length; i++) {
+    r = await generate(model, key, base64, mime, text);
+    if (r.ok) return r;
+    if (r.status !== 503 && r.status !== 429 && r.status !== 500) return r; // 재시도 무의미
+    if (i < delays.length) await sleep(delays[i]);
+  }
+  return r;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).json({ error: "POST only" }); return; }
   try {
@@ -109,14 +124,20 @@ export default async function handler(req, res) {
     let r, usedModel, lastText = "";
     for (const m of fallbacks) {
       if (!m) continue;
-      r = await generate(m, key, base64, mime, text);
+      r = await generateWithRetry(m, key, base64, mime, text);
       if (r.ok) { usedModel = m; break; }
       lastText = await r.text();
-      // 모델 없음이 아니면(권한/키 문제 등) 더 시도해도 소용없음 → 중단
-      if (r.status !== 404 && !/NOT_FOUND/.test(lastText)) break;
+      // 모델 없음(404) 또는 과부하(503/429)면 다른 모델로 계속 시도, 그 외(키/권한 등)는 중단
+      const retryable = r.status === 404 || r.status === 503 || r.status === 429 || /NOT_FOUND|UNAVAILABLE/.test(lastText);
+      if (!retryable) break;
     }
     if (!r || !r.ok) {
-      res.status(502).json({ error: "Gemini " + (r ? r.status : "?"), detail: lastText.slice(0, 400) });
+      const busy = r && (r.status === 503 || r.status === 429);
+      res.status(502).json({
+        error: busy ? "Gemini 서버가 일시적으로 혼잡합니다 (재시도했지만 실패). 잠시 후 다시 시도하세요."
+                    : "Gemini " + (r ? r.status : "?"),
+        detail: lastText.slice(0, 300)
+      });
       return;
     }
 

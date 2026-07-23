@@ -426,16 +426,21 @@ async function processQueue(){
   for(const job of queue){
     job.status="running"; renderJobs();
     setStatus(`🤖 처리 중 ${done+1}/${queue.length} — ${esc(job.name)}`,"busybox");
-    try{ await processJob(job); job.status="done"; }
+    try{ await processJob(job); job.status="done"; job.msg=""; }
     catch(e){ job.status="error"; job.msg=String(e.message||e); }
     done++; renderJobs();
     if(job.id===CUR) loadJobToForm(job);
+    if(done<queue.length) await new Promise(r=>setTimeout(r,500)); // 과부하 방지 간격
   }
   const errs=JOBS.filter(j=>j.status==="error");
-  setStatus(errs.length
-    ? `완료 ${queue.length-errs.length}건 / 오류 ${errs.length}건<br>${errs.map(e=>esc(e.name)+": "+esc(e.msg)).join("<br>")}`
-    : `✔ ${queue.length}건 추출 완료. 목록에서 건을 눌러 확인·수정하세요.`,
-    errs.length?"warnbox":"okbox");
+  if(errs.length){
+    setStatus(`완료 ${queue.length-errs.length}건 / 실패 ${errs.length}건<br>`
+      +errs.map(e=>"· "+esc(e.name)+": "+esc(e.msg)).join("<br>")
+      +`<div style="margin-top:8px"><button class="btn" id="retryBtn">🔄 실패한 ${errs.length}건 다시 시도</button></div>`,"warnbox");
+    const rb=$("retryBtn"); if(rb) rb.onclick=()=>{ errs.forEach(j=>{j.status="pending";j.msg="";}); renderJobs(); processQueue(); };
+  }else{
+    setStatus(`✔ ${queue.length}건 추출 완료. 목록에서 건을 눌러 확인·수정하세요.`,"okbox");
+  }
   // 처리 후 첫 건 선택
   if(queue.length){ const first=queue[0]; CUR=first.id; loadJobToForm(first); renderJobs(); }
 }
