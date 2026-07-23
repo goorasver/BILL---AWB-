@@ -149,9 +149,11 @@
             <option value="ID">인도네시아 (ID)</option>
             <option value="BD">방글라데시 (BD)</option>
           </select>
+          <span class="autoBadge" id="ccBadge" style="display:none"></span>
           <span class="autoBadge" id="regionAuto" style="display:none">자동감지</span>
         </div>
         <div id="valList"></div>
+        <div class="hint">⚠ 누락이 있어도 <b>저장·추출은 가능</b>합니다 (경고 표시만).</div>
       </div>
     </div>
     <div class="panel">
@@ -311,6 +313,8 @@ function loadJobToForm(j){
   $("region").value=j.region||"";
   setTypeUI(j.type||"HAWB");
   $("regionAuto").style.display = j.region ? "inline-block" : "none";
+  $("ccBadge").textContent = j.cc ? ("국가 "+j.cc) : "";
+  $("ccBadge").style.display = j.cc ? "inline-block" : "none";
   $("curName").textContent = j.name ? ("· "+j.name) : "";
   refreshInvHint();
   runValidation();
@@ -321,9 +325,12 @@ function renderJobs(){
   $("jobCount").textContent = JOBS.length>1 ? (JOBS.length+"건") : "";
   box.innerHTML = JOBS.map(j=>{
     const st = j.status==="pending"?"⏳":j.status==="running"?"🤖":j.status==="error"?"⚠️":"✔️";
+    const miss = j.status==="done" ? jobMissing(j) : 0;
+    const missTag = miss ? `<span class="badge bad" style="margin:0" title="필수값 누락/경고 ${miss}건 (저장은 가능)">⚠ ${miss}</span>` : "";
     return `<div class="job ${j.id===CUR?'sel':''}" data-id="${j.id}">
       <span class="st">${st}</span>
       <span class="nm" title="${esc(j.name)}">${esc(j.name)}</span>
+      ${missTag}
       <span class="tp ${j.type==='MAWB'?'m':''}">${j.type}</span>
       <span class="del" data-del="${j.id}" title="삭제">✕</span>
     </div>`;
@@ -458,32 +465,60 @@ function applyToJob(job,o){
   if(o.eori && !job.fields.ac_tax) job.fields.ac_tax=o.eori;
   if(MODE==="check" && !job.manualType){ if(o.is_mawb===true)job.type="MAWB"; else if(o.is_mawb===false)job.type="HAWB"; }
   if(job.type==="MAWB" && !(job.fields.d_desc||"").trim()) job.fields.d_desc=CONSOL_TXT;
-  let reg = (o.dest_country && CC2REGION[String(o.dest_country).toUpperCase()]) || "";
-  if(!reg) reg = detectRegion([job.fields.p_consignee,job.fields.b_dest,job.fields.ac_country,job.fields.p_notify].join(" "));
+  const d = detectCC(id=>job.fields[id]||"");
+  job.cc = d.cc || String(o.dest_country||"").toUpperCase();
+  let reg = d.region || CC2REGION[String(o.dest_country||"").toUpperCase()] || "";
   if(reg) job.region=reg;
   job.used_model=o.used_model||"";
 }
 
-/* ================= 지역 감지 ================= */
-function detectRegion(text){
-  const T=(text||"").toUpperCase();
-  if(/\bTURKEY\b|TURKIYE|T[UÜ]RK[İI]YE|ISTANBUL/.test(T)) return "TR";
-  if(/NIGERIA|LAGOS|ABUJA/.test(T)) return "NG";
-  if(/INDONESIA|JAKARTA|SURABAYA/.test(T)) return "ID";
-  if(/BANGLADESH|DHAKA|CHITTAGONG/.test(T)) return "BD";
-  if(/\bCHINA\b|SHENZHEN|SHANGHAI|GUANGZHOU|BEIJING|NINGBO|HONG KONG/.test(T)) return "CN";
-  if(/\bU\.?S\.?A\.?\b|UNITED STATES|\b[A-Z]{2}\s?\d{5}(-\d{4})?\b/.test(T)) return "US";
-  if(EU_LIST.some(c=>T.includes(c))) return "EU";
-  return "";
+/* ================= 국가/지역 감지 (Consignee 기준) ================= */
+const COUNTRIES=[
+ {cc:"US",region:"US",re:/\bU\.?S\.?A\.?\b|UNITED STATES/},
+ {cc:"TR",region:"TR",re:/\bTURKEY\b|T[UÜ]RK[İI]YE|TURKIYE|ISTANBUL/},
+ {cc:"NG",region:"NG",re:/NIGERIA|LAGOS|ABUJA/},
+ {cc:"ID",region:"ID",re:/INDONESIA|JAKARTA|SURABAYA/},
+ {cc:"BD",region:"BD",re:/BANGLADESH|DHAKA|CHITTAGONG/},
+ {cc:"CN",region:"CN",re:/\bCHINA\b|SHENZHEN|SHANGHAI|GUANGZHOU|BEIJING|NINGBO/},
+ {cc:"HK",region:"CN",re:/HONG KONG/},
+ {cc:"IT",region:"EU",re:/\bITALY\b|ITALIA/},{cc:"DE",region:"EU",re:/GERMANY|DEUTSCHLAND/},
+ {cc:"FR",region:"EU",re:/\bFRANCE\b/},{cc:"ES",region:"EU",re:/\bSPAIN\b|ESPA[NÑ]A/},
+ {cc:"NL",region:"EU",re:/NETHERLANDS|HOLLAND/},{cc:"BE",region:"EU",re:/BELGIUM/},
+ {cc:"PL",region:"EU",re:/POLAND/},{cc:"SE",region:"EU",re:/SWEDEN/},{cc:"AT",region:"EU",re:/AUSTRIA/},
+ {cc:"DK",region:"EU",re:/DENMARK/},{cc:"FI",region:"EU",re:/FINLAND/},{cc:"IE",region:"EU",re:/IRELAND/},
+ {cc:"PT",region:"EU",re:/PORTUGAL/},{cc:"GR",region:"EU",re:/GREECE/},{cc:"CZ",region:"EU",re:/CZECH/},
+ {cc:"HU",region:"EU",re:/HUNGARY/},{cc:"RO",region:"EU",re:/ROMANIA/},{cc:"SK",region:"EU",re:/SLOVAKIA/},
+ {cc:"SI",region:"EU",re:/SLOVENIA/},{cc:"HR",region:"EU",re:/CROATIA/},{cc:"BG",region:"EU",re:/BULGARIA/},
+ {cc:"JP",region:"",re:/\bJAPAN\b|TOKYO|OSAKA/},{cc:"VN",region:"",re:/VIET\s?NAM|HANOI|HO CHI MINH/},
+ {cc:"TH",region:"",re:/THAILAND|BANGKOK/},{cc:"SG",region:"",re:/SINGAPORE/},
+ {cc:"MY",region:"",re:/MALAYSIA|KUALA LUMPUR/},{cc:"PH",region:"",re:/PHILIPPINES|MANILA/},
+ {cc:"IN",region:"",re:/\bINDIA\b|MUMBAI|\bDELHI\b|CHENNAI/},{cc:"AE",region:"",re:/\bU\.?A\.?E\.?\b|DUBAI|ABU DHABI|EMIRATES/},
+ {cc:"SA",region:"",re:/SAUDI|RIYADH|JEDDAH/},{cc:"AU",region:"",re:/AUSTRALIA|SYDNEY|MELBOURNE/},
+ {cc:"CA",region:"",re:/\bCANADA\b|TORONTO|VANCOUVER/},{cc:"MX",region:"",re:/\bMEXICO\b/},
+ {cc:"BR",region:"",re:/\bBRAZIL\b|BRASIL/},
+];
+function detectCC(get){
+  const cc=(get("ac_country")||"").trim().toUpperCase();
+  if(/^[A-Z]{2}$/.test(cc)){
+    const f=COUNTRIES.find(c=>c.cc===cc);
+    return {cc, region: f?f.region:(CC2REGION[cc]||"")};
+  }
+  const T=[get("p_consignee"),get("ac_city"),get("ac_state"),get("ac_street"),get("b_dest")].join(" ").toUpperCase();
+  for(const c of COUNTRIES){ if(c.re.test(T)) return {cc:c.cc, region:c.region}; }
+  if(/\b[A-Z]{2}\s?\d{5}(-\d{4})?\b/.test(T)) return {cc:"US",region:"US"};
+  return {cc:"",region:""};
 }
 function autoRegion(){
-  const j=curJob(); if(j&&j.manualRegion) return;
-  const r=detectRegion($("p_consignee").value+" "+$("b_dest").value+" "+$("ac_country").value+" "+$("p_notify").value);
-  if(r){ $("region").value=r; $("regionAuto").style.display="inline-block"; }
-  runValidation();
+  const j=curJob();
+  const d=detectCC(id=>$(id).value);
+  if(j) j.cc=d.cc;
+  $("ccBadge").textContent = d.cc ? ("국가 "+d.cc) : "";
+  $("ccBadge").style.display = d.cc ? "inline-block":"none";
+  if(!(j&&j.manualRegion) && d.region){ $("region").value=d.region; $("regionAuto").style.display="inline-block"; }
+  syncFormToJob(); runValidation();
 }
 $("region").addEventListener("change",()=>{ const j=curJob(); if(j)j.manualRegion=true; $("regionAuto").style.display="none"; syncFormToJob(); runValidation(); });
-["p_consignee","b_dest","ac_country","p_notify"].forEach(id=>$(id).addEventListener("input",autoRegion));
+["p_consignee","b_dest","ac_country","ac_city","ac_state","ac_street"].forEach(id=>$(id).addEventListener("input",autoRegion));
 
 /* 폼 → 현재 건 자동 저장 */
 FIELDS.forEach(id=>$(id).addEventListener("input",()=>{ syncFormToJob(); }));
@@ -517,30 +552,47 @@ $("liBtn").onclick=()=>{
 
 /* ================= 검증 ================= */
 ["region","ac_tel","ac_zip","ac_email","ac_tax","x_form","x_ba","d_desc"].forEach(id=>$(id).addEventListener("input",runValidation));
+/* 재사용 가능한 검증 계산 (현재 폼 / 각 건 모두 사용) */
+function computeValidation(get,region){
+  const out={req:[],reminders:[],eoriBad:false,vague:[]};
+  const R=REGION_RULES[region];
+  if(R){
+    R.req.forEach(([id,name])=>out.req.push({id,name,ok:(get(id)||"").trim()!==""}));
+    (R.reminders||[]).forEach(rm=>out.reminders.push(rm));
+    if(region==="EU"){
+      const e=(get("ac_tax")||"").trim();
+      if(e && !/^[A-Z]{2}\d{5,}$/i.test(e.replace(/\s/g,""))) out.eoriBad=true;
+    }
+  }
+  const desc=(get("d_desc")||"").toUpperCase();
+  if(desc.trim()!=="") out.vague=VAGUE_TERMS.filter(t=>new RegExp("\\b"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(desc));
+  return out;
+}
+function jobMissing(j){
+  const v=computeValidation(id=>j.fields[id]||"", j.region);
+  return v.req.filter(r=>!r.ok).length + (v.vague.length?1:0) + (v.eoriBad?1:0);
+}
 function runValidation(){
-  const box=$("valList"), region=$("region").value; let items=[];
+  const box=$("valList"), region=$("region").value;
+  const cc=$("ccBadge").textContent.replace("국가 ","").trim();
+  const v=computeValidation(id=>$(id).value, region);
+  let items=[];
   if(region&&REGION_RULES[region]){
     const R=REGION_RULES[region];
-    R.req.forEach(([id,name])=>{
-      const ok=$(id).value.trim()!=="";
-      items.push(`<div class="vitem ${ok?'ok':'bad'}"><span class="ic">${ok?'✔':'✕'}</span><span><b>${name}</b> ${ok?'입력됨':'누락 — '+R.label+' 필수값'}</span></div>`);
-    });
-    (R.reminders||[]).forEach(rm=>{
-      items.push(`<div class="vitem info"><span class="ic">ⓘ</span><span><b>${rm}</b> 필수 — 서류에 있는지 확인 (${R.label})</span></div>`);
-    });
-    if(region==="EU"){
-      const eori=$("ac_tax").value.trim();
-      if(eori && !/^[A-Z]{2}\d{5,}$/i.test(eori.replace(/\s/g,"")))
-        items.push(`<div class="vitem bad"><span class="ic">⚠</span><span><b>EORI 형식 확인</b> — 국가코드+숫자 (예: IT07607410961)</span></div>`);
-    }
-  } else items.push(`<div class="vitem"><span>도착지역 선택(또는 자동감지) 시 필수값을 체크합니다.</span></div>`);
-  const desc=$("d_desc").value.toUpperCase();
-  const hits=VAGUE_TERMS.filter(t=>new RegExp("\\b"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(desc));
-  if(desc.trim()!==""){
-    if(hits.length) items.push(`<div class="vitem bad"><span class="ic">⚠</span><span><b>광의어 감지</b> — 구체적 품명 필요<br>${hits.map(h=>`<span class="badge bad">${h}</span>`).join("")}</span></div>`);
+    v.req.forEach(r=>items.push(`<div class="vitem ${r.ok?'ok':'bad'}"><span class="ic">${r.ok?'✔':'✕'}</span><span><b>${r.name}</b> ${r.ok?'입력됨':'누락 — '+R.label+' 필수값 (저장은 가능)'}</span></div>`));
+    v.reminders.forEach(rm=>items.push(`<div class="vitem info"><span class="ic">ⓘ</span><span><b>${rm}</b> 필수 — 서류에 있는지 확인 (${R.label})</span></div>`));
+    if(v.eoriBad) items.push(`<div class="vitem bad"><span class="ic">⚠</span><span><b>EORI 형식 확인</b> — 국가코드+숫자 (예: IT07607410961)</span></div>`);
+  } else if(cc){
+    items.push(`<div class="vitem info"><span class="ic">ⓘ</span><span><b>${cc}</b> — 이 국가는 별도 필수값 규칙이 없습니다. AMS/EDI 기본 항목만 확인하세요.</span></div>`);
+  } else {
+    items.push(`<div class="vitem"><span>Consignee 국가가 확인되면 그 나라의 필수값을 체크합니다.</span></div>`);
+  }
+  if(($("d_desc").value||"").trim()!==""){
+    if(v.vague.length) items.push(`<div class="vitem bad"><span class="ic">⚠</span><span><b>광의어 감지</b> — 구체적 품명 필요<br>${v.vague.map(h=>`<span class="badge bad">${h}</span>`).join("")}</span></div>`);
     else items.push(`<div class="vitem ok"><span class="ic">✔</span><span>품명 광의어 없음</span></div>`);
   }
   box.innerHTML=items.join("");
+  renderJobs();
 }
 
 /* ================= 추출 ================= */
