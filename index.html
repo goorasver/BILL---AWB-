@@ -189,7 +189,7 @@
       <div class="split">
         <fieldset style="margin:0">
           <legend>Party (Main) — 시스템 칸 규격에 맞춰 줄 나눔</legend>
-          <div class="inline mb" style="justify-content:space-between">
+          <div class="inline mb" style="justify-content:space-between;display:none">
             <span class="inline" style="gap:5px">
               <label class="f" style="margin:0">칸 규격</label>
               <input id="cfgWidth" type="number" min="20" max="80" value="40" style="width:60px" title="한 줄 최대 글자수">
@@ -514,17 +514,19 @@ function applyToJob(job,o){
   job.items = Array.isArray(o.items) ? o.items.filter(x=>x&&String(x).trim()) : [];
   job.invoice = (o.invoice_no||"").trim();
   job.hs = (o.hs_code||"").trim();
-  applyMemory(job);   // 기억해둔 화주면 화주 고정정보 채움
   if(MODE==="check" && !job.manualType){ if(o.is_mawb===true)job.type="MAWB"; else if(o.is_mawb===false)job.type="HAWB"; }
   if(job.type==="MAWB" && !(job.fields.d_desc||"").trim()) job.fields.d_desc=CONSOL_TXT;
+  // ① 지역 먼저 확정 (기억이 '화주@지역'으로 저장되므로 순서가 중요)
   const d = detectCC(id=>job.fields[id]||"");
   job.cc = d.cc || String(o.dest_country||"").toUpperCase();
   let reg = d.region || CC2REGION[String(o.dest_country||"").toUpperCase()] || "";
   if(reg) job.region=reg;
   job.used_model=o.used_model||"";
-  // 빌 입력(CI/PL) 모드는 품명을 규칙대로 구성: 아이템명 → INV → (유럽)HS
-  if(MODE==="input") job.fields.d_desc=composeDesc(job);
-  // 시스템 칸 규격에 맞춰 주소 줄 나누기
+  // ② 그다음 기억 적용 (화주+지역 정확히 매칭)
+  applyMemory(job);
+  // ③ 품명 자동 구성 (버튼 안 눌러도 기본 적용) — 마스터는 제외
+  if(job.type!=="MAWB") job.fields.d_desc=composeDesc(job);
+  // ④ 시스템 칸 규격(40자)에 맞춰 주소 줄 나누기
   ["p_shipper","p_consignee","p_notify"].forEach(id=>{ job.fields[id]=wrapLines(job.fields[id]||"", cfgW()); });
 }
 
@@ -735,7 +737,11 @@ function updateCounts(){
     el.style.color = over ? "var(--warn)" : "var(--muted)";
   });
 }
-["p_shipper","p_consignee","p_notify"].forEach(id=>$(id).addEventListener("input",updateCounts));
+["p_shipper","p_consignee","p_notify"].forEach(id=>{
+  $(id).addEventListener("input",updateCounts);
+  // 칸을 벗어나면 입력을 마칠 때 자동으로 줄 맞춤(40자 기준)
+  $(id).addEventListener("blur",()=>{ fitField(id); syncFormToJob(); updateCounts(); });
+});
 /* 넘친 줄을 다른 칸으로 옮기고 마커(*, **) 붙이기 */
 document.querySelectorAll(".ovBtn").forEach(b=> b.onclick=()=>{
   const src=$(b.dataset.t), dst=$(b.dataset.to), mark=b.dataset.mark, L=cfgL();
@@ -750,12 +756,13 @@ document.querySelectorAll(".ovBtn").forEach(b=> b.onclick=()=>{
 
 /* ============ 품명 자동 구성 (아이템 → INV → 유럽 HS) ============ */
 function composeDesc(job){
-  const lines=[];
+  const cur=String(job.fields.d_desc||"").split(/\r?\n/).filter(l=>l.trim());
   const items=(job.items||[]).filter(Boolean);
-  if(items.length) lines.push(...items);
-  else String(job.fields.d_desc||"").split(/\r?\n/).forEach(l=>{ if(l.trim()) lines.push(l); });
-  if(job.invoice) lines.push("INV NO : "+job.invoice);
-  if(job.region==="EU" && job.hs) lines.push("HS CODE : "+job.hs);
+  // 빌 입력(CI/PL) = 아이템명으로 구성 / 체크빌 = 서류 내용 유지 후 부족한 것만 덧붙임
+  const lines = (MODE==="input" && items.length) ? items.slice() : cur;
+  const has = s => lines.join("\n").toUpperCase().includes(String(s).toUpperCase());
+  if(job.invoice && !has(job.invoice)) lines.push("INV NO : "+job.invoice);
+  if(job.region==="EU" && job.hs && !has(job.hs)) lines.push("HS CODE : "+job.hs);
   return lines.join("\n");
 }
 $("composeBtn").onclick=()=>{ syncFormToJob(); const j=curJob(); if(!j)return;
@@ -862,10 +869,19 @@ function fname(d){
   if(no) return `${d.type}-${no.replace(/[\\/:*?"<>|]/g,"-")}.json`;   // 체크빌: 번호로
   return `${d.type}-${todayStr()}-${seqNext()}.json`;                  // 서류: HAWB-0726-01
 }
-$("exportBtn").onclick=()=>{ syncFormToJob(); const j=curJob(); if(!j)return; const d=buildData(j); download(d,fname(d)); };
+/* 추출(=사람이 확인 완료)할 때 그 화주+지역 입력 패턴을 조용히 기억 */
+async function rememberJob(job){
+  const get=id=>job.fields[id]||"";
+  const keys=memKeys(get, job.region);
+  if(!keys.length) return;
+  const rec={}; MEM_FIELDS.forEach(id=>{ const v=String(job.fields[id]||"").trim(); if(v) rec[id]=v; });
+  if(!Object.keys(rec).length) return;
+  for(const k of keys) await memPut(k,rec);
+}
+$("exportBtn").onclick=()=>{ syncFormToJob(); const j=curJob(); if(!j)return; rememberJob(j); const d=buildData(j); download(d,fname(d)); };
 $("exportAllBtn").onclick=()=>{
   syncFormToJob();
-  JOBS.forEach((j,i)=>{ const d=buildData(j); setTimeout(()=>download(d,fname(d)), i*350); });
+  JOBS.forEach((j,i)=>{ rememberJob(j); const d=buildData(j); setTimeout(()=>download(d,fname(d)), i*350); });
 };
 $("exportOneBtn").onclick=()=>{
   syncFormToJob();
