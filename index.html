@@ -189,7 +189,14 @@
       <div class="split">
         <fieldset style="margin:0">
           <legend>Party (Main)</legend>
-          <div class="mb"><label class="f">Shipper</label><textarea id="p_shipper" style="min-height:74px"></textarea></div>
+          <div class="inline mb" style="justify-content:space-between">
+            <label class="f" style="margin:0">Shipper</label>
+            <span class="inline">
+              <span id="memTag" class="autoBadge" style="display:none">📌 기억 적용됨</span>
+              <button class="btn" id="memSaveBtn" title="이 화주의 입력 방식을 기억합니다">💾 이 화주 기억</button>
+            </span>
+          </div>
+          <div class="mb"><textarea id="p_shipper" style="min-height:74px"></textarea></div>
           <div class="mb"><label class="f">Consignee</label><textarea id="p_consignee" style="min-height:74px"></textarea></div>
           <div><label class="f">Notify</label><textarea id="p_notify" style="min-height:64px"></textarea></div>
         </fieldset>
@@ -206,7 +213,15 @@
               <button class="btn li" id="liBtn">🔋 리튬</button>
             </span>
           </div>
-          <textarea id="d_desc" style="min-height:132px" class="mb"></textarea>
+          <textarea id="d_desc" style="min-height:132px"></textarea>
+          <div class="vitem info" style="margin:8px 0"><span class="ic">ⓘ</span><span><b>품명(ITEM)은 꼭 한 번 확인해 주세요.</b> AI가 뽑은 초안입니다.</span></div>
+          <div id="itemBox" style="display:none">
+            <div class="inline" style="justify-content:space-between;margin-bottom:5px">
+              <label class="f" style="margin:0">서류에서 찾은 품목 — 클릭해서 품명에 담기</label>
+              <button class="btn" id="itemAllBtn">전체 담기</button>
+            </div>
+            <div id="itemChips" class="inline" style="gap:6px;margin-bottom:10px"></div>
+          </div>
           <div class="inline mb" style="justify-content:space-between">
             <label class="f" style="margin:0">Marks &amp; Numbers (SHIPPING MARK)</label>
             <span class="inline" id="shapeBtns">
@@ -316,6 +331,9 @@ function loadJobToForm(j){
   $("ccBadge").textContent = j.cc ? ("국가 "+j.cc) : "";
   $("ccBadge").style.display = j.cc ? "inline-block" : "none";
   $("curName").textContent = j.name ? ("· "+j.name) : "";
+  $("memTag").textContent = j.memApplied ? "📌 기억 적용됨" : "";
+  $("memTag").style.display = j.memApplied ? "inline-block" : "none";
+  renderItems(j);
   refreshInvHint();
   runValidation();
 }
@@ -463,6 +481,8 @@ const MAP={
 function applyToJob(job,o){
   Object.entries(MAP).forEach(([k,id])=>{ if(o[k]!=null&&o[k]!=="") job.fields[id]=o[k]; });
   if(o.eori && !job.fields.ac_tax) job.fields.ac_tax=o.eori;
+  job.items = Array.isArray(o.items) ? o.items.filter(x=>x&&String(x).trim()) : [];
+  applyMemory(job);   // 기억해둔 화주면 빈 칸 자동 채움
   if(MODE==="check" && !job.manualType){ if(o.is_mawb===true)job.type="MAWB"; else if(o.is_mawb===false)job.type="HAWB"; }
   if(job.type==="MAWB" && !(job.fields.d_desc||"").trim()) job.fields.d_desc=CONSOL_TXT;
   const d = detectCC(id=>job.fields[id]||"");
@@ -522,6 +542,50 @@ $("region").addEventListener("change",()=>{ const j=curJob(); if(j)j.manualRegio
 
 /* 폼 → 현재 건 자동 저장 */
 FIELDS.forEach(id=>$(id).addEventListener("input",()=>{ syncFormToJob(); }));
+
+/* ================= 품목 골라 담기 ================= */
+function renderItems(job){
+  const items=(job&&job.items)||[];
+  if(!items.length){ $("itemBox").style.display="none"; $("itemChips").innerHTML=""; return; }
+  $("itemBox").style.display="block";
+  $("itemChips").innerHTML=items.map((t,i)=>`<button class="btn" data-i="${i}">+ ${esc(t)}</button>`).join("");
+  $("itemChips").querySelectorAll("button").forEach(b=>b.onclick=()=>addItem(items[+b.dataset.i]));
+}
+function addItem(t){
+  if(!t) return;
+  const d=$("d_desc");
+  if(d.value.toUpperCase().includes(String(t).toUpperCase())) return;
+  d.value=(d.value?d.value.replace(/\s*$/,"")+"\n":"")+t;
+  syncFormToJob(); runValidation();
+}
+$("itemAllBtn").onclick=()=>{ const j=curJob(); ((j&&j.items)||[]).forEach(addItem); };
+
+/* ================= 화주 기억 (이 브라우저에 저장) ================= */
+const MEM_KEY="bill_shipper_memory";
+const MEM_FIELDS=["as_name","as_city","as_country","as_zip","as_tel","as_street","as_email","b_via","b_by","d_marks"];
+function memAll(){ try{ return JSON.parse(localStorage.getItem(MEM_KEY)||"{}"); }catch(e){ return {}; } }
+function memWrite(o){ try{ localStorage.setItem(MEM_KEY,JSON.stringify(o)); }catch(e){} }
+function shipperKey(get){
+  return ((get("as_name")||"")+" "+(get("p_shipper")||"")).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,24);
+}
+$("memSaveBtn").onclick=()=>{
+  syncFormToJob();
+  const key=shipperKey(id=>$(id).value);
+  if(key.length<4){ alert("Shipper 정보가 있어야 기억할 수 있어요."); return; }
+  const all=memAll(); const rec={};
+  MEM_FIELDS.forEach(id=>{ const v=$(id).value.trim(); if(v) rec[id]=v; });
+  all[key]=rec; memWrite(all);
+  alert("이 화주의 입력 방식을 기억했습니다.\n다음에 같은 화주 서류를 넣으면 빈 칸이 자동으로 채워집니다.");
+  $("memTag").textContent="📌 기억됨"; $("memTag").style.display="inline-block";
+};
+function applyMemory(job){
+  const key=shipperKey(id=>job.fields[id]||"");
+  if(key.length<4) return false;
+  const rec=memAll()[key]; if(!rec) return false;
+  let used=false;
+  Object.entries(rec).forEach(([id,v])=>{ if(!(job.fields[id]||"").trim()){ job.fields[id]=v; used=true; } });
+  job.memApplied=used; return used;
+}
 
 /* ================= 마크 도형 표기 ================= */
 $("shapeBtns").querySelectorAll("button").forEach(b=> b.onclick=()=>{

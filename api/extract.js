@@ -7,6 +7,7 @@ Return ONLY a JSON object, no markdown. Use "" if unknown. Keys:
 awb_no, invoice_no, destination, via_to, by,
 shipper, consignee, notify   (each = full multi-line name+address block, verbatim),
 description   (the FULL goods description text exactly as written, do NOT summarize or pick items; keep line breaks),
+items   (array of strings — each distinct goods/item name listed in the document, one per element, no quantities or prices; [] if none),
 marks   (shipping marks — see the SHIPPING MARK rule below),
 shipper_name, shipper_city, shipper_street, shipper_zip, shipper_country, shipper_tel, shipper_email,
 consignee_name, consignee_state, consignee_city, consignee_street, consignee_zip, consignee_country, consignee_tel, consignee_email, consignee_taxid,
