@@ -193,6 +193,7 @@
             <label class="f" style="margin:0">Shipper</label>
             <span class="inline">
               <span id="memTag" class="autoBadge" style="display:none">📌 기억 적용됨</span>
+              <span id="memMode" class="autoBadge">확인 중…</span>
               <button class="btn" id="memSaveBtn" title="이 화주의 입력 방식을 기억합니다">💾 이 화주 기억</button>
             </span>
           </div>
@@ -560,28 +561,59 @@ function addItem(t){
 }
 $("itemAllBtn").onclick=()=>{ const j=curJob(); ((j&&j.items)||[]).forEach(addItem); };
 
-/* ================= 화주 기억 (이 브라우저에 저장) ================= */
+/* ================= 화주 기억 (서버 저장소 연결 시 팀 공유 / 아니면 브라우저) ================= */
 const MEM_KEY="bill_shipper_memory";
 const MEM_FIELDS=["as_name","as_city","as_country","as_zip","as_tel","as_street","as_email","b_via","b_by","d_marks"];
-function memAll(){ try{ return JSON.parse(localStorage.getItem(MEM_KEY)||"{}"); }catch(e){ return {}; } }
-function memWrite(o){ try{ localStorage.setItem(MEM_KEY,JSON.stringify(o)); }catch(e){} }
+let MEM={}, MEM_MODE="local";
+function localMem(){ try{ return JSON.parse(localStorage.getItem(MEM_KEY)||"{}"); }catch(e){ return {}; } }
+function writeLocal(){ try{ localStorage.setItem(MEM_KEY,JSON.stringify(MEM)); }catch(e){} }
+function updateMemMode(){
+  const el=$("memMode"); if(!el) return;
+  const server = MEM_MODE==="server";
+  el.textContent = (server?"팀 공유 저장":"이 브라우저만") + " · " + Object.keys(MEM).length + "곳";
+  el.title = server ? "Vercel 저장소에 저장 — 팀 전체가 공유합니다"
+                    : "서버 저장소 미연결 — 이 브라우저에만 저장됩니다";
+  el.style.background = server ? "var(--purple)" : "#3a4c6a";
+  el.style.color = server ? "#150f2e" : "#c9d6ea";
+}
+async function loadMem(){
+  try{
+    const j=await (await fetch("/api/memory")).json();
+    if(j&&j.ok){ MEM=j.data||{}; MEM_MODE="server"; }
+    else { MEM=localMem(); MEM_MODE="local"; }
+  }catch(e){ MEM=localMem(); MEM_MODE="local"; }
+  updateMemMode();
+}
+async function memPut(key,rec){
+  MEM[key]=rec;
+  if(MEM_MODE==="server"){
+    try{
+      const j=await (await fetch("/api/memory",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({key,rec})})).json();
+      if(!j||!j.ok) throw new Error("서버 저장 실패");
+      updateMemMode(); return "server";
+    }catch(e){ writeLocal(); updateMemMode(); return "local-fallback"; }
+  }
+  writeLocal(); updateMemMode(); return "local";
+}
 function shipperKey(get){
   return ((get("as_name")||"")+" "+(get("p_shipper")||"")).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,24);
 }
-$("memSaveBtn").onclick=()=>{
+$("memSaveBtn").onclick=async()=>{
   syncFormToJob();
   const key=shipperKey(id=>$(id).value);
   if(key.length<4){ alert("Shipper 정보가 있어야 기억할 수 있어요."); return; }
-  const all=memAll(); const rec={};
-  MEM_FIELDS.forEach(id=>{ const v=$(id).value.trim(); if(v) rec[id]=v; });
-  all[key]=rec; memWrite(all);
-  alert("이 화주의 입력 방식을 기억했습니다.\n다음에 같은 화주 서류를 넣으면 빈 칸이 자동으로 채워집니다.");
+  const rec={}; MEM_FIELDS.forEach(id=>{ const v=$(id).value.trim(); if(v) rec[id]=v; });
+  const where=await memPut(key,rec);
+  alert(where==="server"
+    ? "이 화주의 입력 방식을 기억했습니다. (팀 전체 공유)\n다음에 같은 화주 서류를 넣으면 빈 칸이 자동으로 채워집니다."
+    : "이 화주의 입력 방식을 기억했습니다. (이 브라우저에만 저장)\n팀 공유를 하려면 Vercel 저장소(KV) 연결이 필요합니다.");
   $("memTag").textContent="📌 기억됨"; $("memTag").style.display="inline-block";
 };
 function applyMemory(job){
   const key=shipperKey(id=>job.fields[id]||"");
   if(key.length<4) return false;
-  const rec=memAll()[key]; if(!rec) return false;
+  const rec=MEM[key]; if(!rec) return false;
   let used=false;
   Object.entries(rec).forEach(([id,v])=>{ if(!(job.fields[id]||"").trim()){ job.fields[id]=v; used=true; } });
   job.memApplied=used; return used;
@@ -695,7 +727,7 @@ $("previewBtn").onclick=()=>{ syncFormToJob(); const o=$("out"); o.style.display
 $("clearBtn").onclick=()=>{ const j=curJob(); if(!j)return; j.fields={}; j.region=""; j.manualType=false; j.manualRegion=false; loadJobToForm(j); renderJobs(); };
 
 /* ================= 시작 ================= */
-(function init(){ const j=newJob(); CUR=j.id; renderJobs(); loadJobToForm(j); })();
+(function init(){ const j=newJob(); CUR=j.id; renderJobs(); loadJobToForm(j); loadMem(); })();
 </script>
 </body>
 </html>
