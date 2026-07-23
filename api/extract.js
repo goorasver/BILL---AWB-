@@ -50,13 +50,14 @@ async function pickModel(key) {
   }
 }
 
-async function generate(model, key, base64, mime) {
+async function generate(model, key, base64, mime, text) {
   const url = `${BASE}/models/${model}:generateContent?key=${key}`;
+  // 엑셀은 CSV 텍스트로, PDF/이미지는 파일 그대로 전달
+  const parts = [{ text: GEM_PROMPT }];
+  if (text) parts.push({ text: "\n--- DOCUMENT (spreadsheet converted to CSV) ---\n" + text });
+  else parts.push({ inline_data: { mime_type: mime || "application/pdf", data: base64 } });
   const body = {
-    contents: [{ parts: [
-      { text: GEM_PROMPT },
-      { inline_data: { mime_type: mime || "application/pdf", data: base64 } }
-    ]}],
+    contents: [{ parts }],
     generationConfig: { response_mime_type: "application/json", temperature: 0 }
   };
   const r = await fetch(url, {
@@ -70,8 +71,8 @@ async function generate(model, key, base64, mime) {
 export default async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).json({ error: "POST only" }); return; }
   try {
-    const { base64, mime } = req.body || {};
-    if (!base64) { res.status(400).json({ error: "no file (base64 missing)" }); return; }
+    const { base64, mime, text } = req.body || {};
+    if (!base64 && !text) { res.status(400).json({ error: "no input (base64/text missing)" }); return; }
 
     const key = process.env.GEMINI_API_KEY;
     if (!key) { res.status(500).json({ error: "GEMINI_API_KEY 환경변수가 설정되지 않았습니다 (Vercel > Settings > Environment Variables)" }); return; }
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
     let r, usedModel, lastText = "";
     for (const m of fallbacks) {
       if (!m) continue;
-      r = await generate(m, key, base64, mime);
+      r = await generate(m, key, base64, mime, text);
       if (r.ok) { usedModel = m; break; }
       lastText = await r.text();
       // 모델 없음이 아니면(권한/키 문제 등) 더 시도해도 소용없음 → 중단

@@ -316,17 +316,34 @@ function detectFromFilename(name){
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-function handleExcel(buf,name){
+async function handleExcel(buf,name){
+  let rows=[], csvText="";
   try{
     const wb=XLSX.read(buf,{type:"array"});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:""});
-    const flat=rows.map(r=>r.join(" ")).join("\n");
-    if(MODE==="check"){ detectTypeFromText(flat); } else { autoSetType("HAWB","CI/PL"); }
+    rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,blankrows:false,defval:""});
+    // 모든 시트를 CSV 텍스트로 (양식이 달라도 AI가 읽을 수 있게)
+    const parts=[];
+    wb.SheetNames.slice(0,5).forEach(n=>{
+      const csv=XLSX.utils.sheet_to_csv(wb.Sheets[n],{blankrows:false});
+      if(csv.trim()) parts.push("### SHEET: "+n+"\n"+csv);
+    });
+    csvText=parts.join("\n\n").slice(0,120000);
+  }catch(err){ setStatus("엑셀을 읽지 못했어요: "+esc(err.message),"warnbox"); return; }
+
+  drop.querySelector("b").textContent="✔ "+name;
+  const flat=rows.map(r=>r.join(" ")).join("\n");
+  if(MODE==="check"){ detectTypeFromText(flat); } else { autoSetType("HAWB","CI/PL"); }
+
+  setStatus("🤖 서버(Gemini)가 엑셀을 읽는 중… (수 초)","busybox");
+  try{
+    const obj=await serverExtract(null,null,csvText);
+    if(obj.error) throw new Error(obj.error+(obj.detail?(" / "+obj.detail):""));
+    applyExtract(obj);
+    setStatus("✔ Gemini가 엑셀에서 추출"+(obj.used_model?(" ("+esc(obj.used_model)+")"):"")+". 확인·수정하세요.","okbox");
+  }catch(err){
     extractFromRows(rows); autoRegion();
-    setStatus("✔ 엑셀에서 자동 추출. 확인·수정하세요.","okbox");
-    drop.querySelector("b").textContent="✔ "+name;
-  }catch(err){ setStatus("엑셀을 읽지 못했어요: "+esc(err.message),"warnbox"); }
+    setStatus("⚠ AI 추출 실패 ("+esc(err.message)+")<br>→ 규칙 파싱으로 대체했습니다. 내용을 꼭 확인·수정하세요.","warnbox");
+  }
 }
 
 async function handlePdf(buf,name){
@@ -342,8 +359,9 @@ async function handlePdf(buf,name){
   }
 }
 function toBase64(buf){ let s="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s); }
-async function serverExtract(base64,mime){
-  const res=await fetch("/api/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({base64,mime})});
+async function serverExtract(base64,mime,text){
+  const payload = text ? {text} : {base64,mime};
+  const res=await fetch("/api/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   return await res.json().catch(()=>({error:"응답 파싱 실패 ("+res.status+")"}));
 }
 function applyExtract(o){
