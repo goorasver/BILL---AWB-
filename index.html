@@ -463,7 +463,11 @@ async function processQueue(){
       +`<div style="margin-top:8px"><button class="btn" id="retryBtn">🔄 실패한 ${errs.length}건 다시 시도</button></div>`,"warnbox");
     const rb=$("retryBtn"); if(rb) rb.onclick=()=>{ errs.forEach(j=>{j.status="pending";j.msg="";}); renderJobs(); processQueue(); };
   }else{
-    setStatus(`✔ ${queue.length}건 추출 완료. 목록에서 건을 눌러 확인·수정하세요.`,"okbox");
+    const applied=queue.filter(j=>j.memApplied);
+    const memInfo = applied.length
+      ? `<br>📌 기억 적용 ${applied.length}건 (${applied.map(j=>esc(j.memKey||"")).join(", ")})`
+      : `<br>📌 기억된 화주 없음 — 추출하면 그 화주가 기억됩니다 (현재 ${Object.keys(MEM).length}곳 저장됨)`;
+    setStatus(`✔ ${queue.length}건 추출 완료. 목록에서 건을 눌러 확인·수정하세요.`+memInfo,"okbox");
   }
   // 처리 후 첫 건 선택
   if(queue.length){ const first=queue[0]; CUR=first.id; loadJobToForm(first); renderJobs(); }
@@ -636,8 +640,19 @@ async function memPut(key,rec){
 /* 화주 키: 줄바꿈·공백·기호를 모두 무시하고 만들어 어떤 상태에서도 매칭되게.
    AMS Shipper Name / Shipper 원문 두 가지로 각각 키를 만들어 둘 다 시도. 지역별로 따로 저장. */
 const normKey = s => String(s||"").replace(/[^A-Za-z0-9]/g,"").toUpperCase().slice(0,20);
+/* 화주명 첫 단어로 매칭 (예: "SILICON2 CO., LTD." → "SILICON2") — 가장 안정적 */
+function firstWordKey(s){
+  const line=String(s||"").split(/\r?\n/)[0]||"";
+  const w=line.trim().split(/[\s,./|\\()-]+/).filter(Boolean)[0]||"";
+  return w.replace(/[^A-Za-z0-9]/g,"").toUpperCase().slice(0,20);
+}
 function shipKeys(get){
-  return [normKey(get("as_name")), normKey(get("p_shipper"))].filter(k=>k.length>=4);
+  const set=new Set();
+  [get("as_name"), get("p_shipper")].forEach(v=>{
+    const fw=firstWordKey(v); if(fw.length>=3) set.add(fw);          // 첫 단어 (주 키)
+    const nk=normKey(v);      if(nk.length>=4) set.add(nk);          // 전체 이름 (보조)
+  });
+  return [...set];
 }
 function memKeys(get,region){
   const r=region||"-";
@@ -873,12 +888,18 @@ function fname(d){
 async function rememberJob(job){
   const get=id=>job.fields[id]||"";
   const keys=memKeys(get, job.region);
-  if(!keys.length) return;
+  if(!keys.length) return "";
   const rec={}; MEM_FIELDS.forEach(id=>{ const v=String(job.fields[id]||"").trim(); if(v) rec[id]=v; });
-  if(!Object.keys(rec).length) return;
+  if(!Object.keys(rec).length) return "";
   for(const k of keys) await memPut(k,rec);
+  return keys[0];
 }
-$("exportBtn").onclick=()=>{ syncFormToJob(); const j=curJob(); if(!j)return; rememberJob(j); const d=buildData(j); download(d,fname(d)); };
+$("exportBtn").onclick=async()=>{
+  syncFormToJob(); const j=curJob(); if(!j)return;
+  const d=buildData(j); download(d,fname(d));
+  const saved=await rememberJob(j);
+  setStatus(`⬇ ${esc(fname(d))} 저장`+(saved?` · 📌 화주 기억: ${esc(saved)}`:""),"okbox");
+};
 $("exportAllBtn").onclick=()=>{
   syncFormToJob();
   JOBS.forEach((j,i)=>{ rememberJob(j); const d=buildData(j); setTimeout(()=>download(d,fname(d)), i*350); });
