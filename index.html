@@ -604,7 +604,8 @@ $("itemAllBtn").onclick=()=>{ const j=curJob(); ((j&&j.items)||[]).forEach(addIt
 
 /* ================= 화주 기억 (서버 저장소 연결 시 팀 공유 / 아니면 브라우저) ================= */
 const MEM_KEY="bill_shipper_memory";
-const MEM_FIELDS=["as_name","as_city","as_country","as_zip","as_tel","as_street","as_email","b_via","b_by","d_marks"];
+/* 화주가 같으면 늘 똑같은 값들만 기억 (수하인·마크 등 건마다 바뀌는 건 제외) */
+const MEM_FIELDS=["p_shipper","as_name","as_city","as_country","as_zip","as_tel","as_street","as_email","b_via","b_by"];
 let MEM={}, MEM_MODE="local";
 function localMem(){ try{ return JSON.parse(localStorage.getItem(MEM_KEY)||"{}"); }catch(e){ return {}; } }
 function writeLocal(){ try{ localStorage.setItem(MEM_KEY,JSON.stringify(MEM)); }catch(e){} }
@@ -676,7 +677,7 @@ $("memSaveBtn").onclick=async()=>{
   $("memTag").textContent="📌 기억됨"; $("memTag").style.display="inline-block";
 };
 /* 화주 고정정보(AMS Shipper)는 덮어쓰고, 건마다 달라지는 값은 비었을 때만 채움 */
-const MEM_OVERWRITE=["as_name","as_city","as_country","as_zip","as_tel","as_street","as_email"];
+const MEM_OVERWRITE=["p_shipper","as_name","as_city","as_country","as_zip","as_tel","as_street","as_email"];
 $("memMode").onclick=()=>{
   const stored=Object.keys(MEM);
   const get=id=>$(id).value;
