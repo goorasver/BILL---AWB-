@@ -192,7 +192,7 @@
           <div class="inline mb" style="justify-content:space-between;display:none">
             <span class="inline" style="gap:5px">
               <label class="f" style="margin:0">칸 규격</label>
-              <input id="cfgWidth" type="number" min="20" max="80" value="40" style="width:60px" title="한 줄 최대 글자수">
+              <input id="cfgWidth" type="number" min="20" max="80" value="44" style="width:60px" title="한 줄 최대 글자수">
               <span class="hint" style="margin:0">자 ×</span>
               <input id="cfgLines" type="number" min="3" max="12" value="6" style="width:54px" title="최대 줄 수">
               <span class="hint" style="margin:0">줄</span>
@@ -208,7 +208,7 @@
           <div class="mb">
             <div class="inline" style="justify-content:space-between">
               <label class="f" style="margin:0">Shipper <span id="cnt_p_shipper" class="hint" style="margin:0"></span></label>
-              <button class="btn ovBtn" data-t="p_shipper" data-mark="*" data-to="p_notify">넘침 → Notify (*)</button>
+              <button class="btn ovBtn" data-t="p_shipper" data-mark="**" data-to="d_marks">넘침 → Mark (**)</button>
             </div>
             <textarea id="p_shipper" style="min-height:152px"></textarea>
           </div>
@@ -530,8 +530,9 @@ function applyToJob(job,o){
   applyMemory(job);
   // ③ 품명 자동 구성 (버튼 안 눌러도 기본 적용) — 마스터는 제외
   if(job.type!=="MAWB") job.fields.d_desc=composeDesc(job);
-  // ④ 시스템 칸 규격(40자)에 맞춰 주소 줄 나누기
+  // ④ 시스템 칸 규격(44자)에 맞춰 주소 줄 나누기 + 5줄 넘침은 ** 로 Mark로
   ["p_shipper","p_consignee","p_notify"].forEach(id=>{ job.fields[id]=wrapLines(job.fields[id]||"", cfgW()); });
+  autoOverflowJob(job);
 }
 
 /* ================= 국가/지역 감지 (Consignee 기준) ================= */
@@ -604,8 +605,11 @@ $("itemAllBtn").onclick=()=>{ const j=curJob(); ((j&&j.items)||[]).forEach(addIt
 
 /* ================= 화주 기억 (서버 저장소 연결 시 팀 공유 / 아니면 브라우저) ================= */
 const MEM_KEY="bill_shipper_memory";
-/* 화주가 같으면 늘 똑같은 값들만 기억 (수하인·마크 등 건마다 바뀌는 건 제외) */
-const MEM_FIELDS=["p_shipper","as_name","as_city","as_country","as_zip","as_tel","as_street","as_email","b_via","b_by"];
+/* 덮어쓰기(화주면 늘 동일): Shipper 전체 + 라우팅 */
+const MEM_OVERWRITE=["p_shipper","as_name","as_city","as_country","as_zip","as_tel","as_street","as_email","b_via","b_by"];
+/* 비었을 때만 채움(반복이 많아 거의 같지만, 새 추출이 있으면 그걸 우선): Consignee/Notify/품명 등 */
+const MEM_FILL=["p_consignee","p_notify","d_desc","ac_name","ac_state","ac_city","ac_zip","ac_country","ac_street","ac_tel","ac_email","ac_tax","x_form","x_ba"];
+const MEM_FIELDS=[...MEM_OVERWRITE,...MEM_FILL];
 let MEM={}, MEM_MODE="local";
 function localMem(){ try{ return JSON.parse(localStorage.getItem(MEM_KEY)||"{}"); }catch(e){ return {}; } }
 function writeLocal(){ try{ localStorage.setItem(MEM_KEY,JSON.stringify(MEM)); }catch(e){} }
@@ -676,8 +680,6 @@ $("memSaveBtn").onclick=async()=>{
     +"\n\n다음에 같은 화주+지역 서류를 넣으면 자동으로 채워집니다.");
   $("memTag").textContent="📌 기억됨"; $("memTag").style.display="inline-block";
 };
-/* 화주 고정정보(AMS Shipper)는 덮어쓰고, 건마다 달라지는 값은 비었을 때만 채움 */
-const MEM_OVERWRITE=["p_shipper","as_name","as_city","as_country","as_zip","as_tel","as_street","as_email"];
 $("memMode").onclick=()=>{
   const stored=Object.keys(MEM);
   const get=id=>$(id).value;
@@ -704,9 +706,11 @@ function applyMemory(job){
   }
   if(!rec) return false;
   Object.entries(rec).forEach(([id,v])=>{
+    if(id==="_items") return;
     if(MEM_OVERWRITE.includes(id)) job.fields[id]=v;
     else if(!(job.fields[id]||"").trim()) job.fields[id]=v;
   });
+  if(Array.isArray(rec._items) && !(job.items&&job.items.length)) job.items=rec._items.slice();
   job.memApplied=true; job.memKey=used; return true;
 }
 
@@ -718,13 +722,11 @@ $("shapeBtns").querySelectorAll("button").forEach(b=> b.onclick=()=>{
 });
 
 /* ============ 칸 규격 (글자수/줄수) & 주소 줄 나누기 ============ */
-const CFG_KEY="bill_box_cfg";
-(function loadCfg(){ try{ const c=JSON.parse(localStorage.getItem(CFG_KEY)||"{}");
-  if(c.w) $("cfgWidth").value=c.w; if(c.l) $("cfgLines").value=c.l; }catch(e){} })();
-function cfgW(){ return Math.max(20,parseInt($("cfgWidth").value)||40); }
-function cfgL(){ return Math.max(3,parseInt($("cfgLines").value)||6); }
-function saveCfg(){ try{ localStorage.setItem(CFG_KEY,JSON.stringify({w:cfgW(),l:cfgL()})); }catch(e){} }
-["cfgWidth","cfgLines"].forEach(id=>$(id).addEventListener("input",()=>{ saveCfg(); updateCounts(); }));
+const BOX_W=44;          // 한 줄 최대 글자수
+const BOX_KEEP=5;        // 이 줄 수를 넘으면 넘침 처리(** 로 Mark/Notify로)
+$("cfgWidth").value=BOX_W; $("cfgLines").value=BOX_KEEP;
+function cfgW(){ return BOX_W; }
+function cfgL(){ return BOX_KEEP; }
 
 function wrapLines(text,width){
   const out=[];
@@ -743,6 +745,26 @@ function wrapLines(text,width){
   return out.join("\n");
 }
 function fitField(id){ $(id).value=wrapLines($(id).value,cfgW()); }
+/* 5줄(BOX_KEEP) 넘침 → 넘친 줄을 Mark로 ** 붙여 이동 (Shipper/Consignee) */
+function overflowText(text){
+  const lines=wrapLines(text||"",cfgW()).split(/\r?\n/);
+  if(lines.length<=BOX_KEEP) return {keep:lines.join("\n"), over:""};
+  const keep=lines.slice(0,BOX_KEEP), over=lines.slice(BOX_KEEP);
+  keep[keep.length-1]=keep[keep.length-1].replace(/\s*\*+$/,"")+"**";
+  return {keep:keep.join("\n"), over:"**"+over.join("\n")};
+}
+function autoOverflowJob(job){
+  let extra=[];
+  ["p_shipper","p_consignee"].forEach(id=>{
+    const r=overflowText(job.fields[id]||"");
+    job.fields[id]=r.keep;
+    if(r.over) extra.push(r.over);
+  });
+  if(extra.length){
+    const cur=(job.fields.d_marks||"").replace(/\s*$/,"");
+    job.fields.d_marks = (cur?cur+"\n":"") + extra.join("\n");
+  }
+}
 $("fitAllBtn").onclick=()=>{ ["p_shipper","p_consignee","p_notify"].forEach(fitField); syncFormToJob(); updateCounts(); };
 function updateCounts(){
   ["p_shipper","p_consignee","p_notify"].forEach(id=>{
@@ -755,8 +777,12 @@ function updateCounts(){
 }
 ["p_shipper","p_consignee","p_notify"].forEach(id=>{
   $(id).addEventListener("input",updateCounts);
-  // 칸을 벗어나면 입력을 마칠 때 자동으로 줄 맞춤(40자 기준)
-  $(id).addEventListener("blur",()=>{ fitField(id); syncFormToJob(); updateCounts(); });
+  // 칸을 벗어나면 입력을 마칠 때 자동으로 줄 맞춤(44자) + 넘침 처리
+  $(id).addEventListener("blur",()=>{
+    fitField(id); syncFormToJob();
+    const j=curJob(); if(j){ autoOverflowJob(j); loadJobToForm(j); }
+    updateCounts();
+  });
 });
 /* 넘친 줄을 다른 칸으로 옮기고 마커(*, **) 붙이기 */
 document.querySelectorAll(".ovBtn").forEach(b=> b.onclick=()=>{
@@ -891,6 +917,7 @@ async function rememberJob(job){
   const keys=memKeys(get, job.region);
   if(!keys.length) return "";
   const rec={}; MEM_FIELDS.forEach(id=>{ const v=String(job.fields[id]||"").trim(); if(v) rec[id]=v; });
+  if(job.items&&job.items.length) rec._items=job.items.slice();
   if(!Object.keys(rec).length) return "";
   for(const k of keys) await memPut(k,rec);
   return keys[0];

@@ -37,6 +37,13 @@ IN DIA
 For any other shape, just transcribe the text with no shape notation.
 Keep any other mark lines (port, case numbers, C/NO. etc.) on following lines, verbatim.
 
+TRANSLITERATION: output every value in the LATIN alphabet (A-Z) only.
+- Strip accents/diacritics: È→E, É→E, Ü→U, Ö→O, Ñ→N, Ç→C, ß→SS, Å→A, Ø→O, etc.
+- If a name/address is written in a non-Latin script (Cyrillic, Greek, Arabic, CJK, Thai …), romanize it to Latin letters.
+- Never output non-Latin characters. Keep digits and standard punctuation.
+
+Also always fill these when present (they are frequently needed): consignee_tel, hs_code, and eori.
+
 If a value truly is not in the document, return "" — never guess or invent.
 
 Rules: shipper_city = shipper's city FULL name (e.g. SHENZHEN, SHANGHAI, HONG KONG).
