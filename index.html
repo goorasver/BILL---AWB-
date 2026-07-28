@@ -191,17 +191,20 @@
           <legend>Party (Main) — 시스템 칸 규격에 맞춰 줄 나눔</legend>
           <div class="inline mb" style="justify-content:space-between;display:none">
             <span class="inline" style="gap:5px">
-              <label class="f" style="margin:0">칸 규격</label>
-              <input id="cfgWidth" type="number" min="20" max="80" value="44" style="width:60px" title="한 줄 최대 글자수">
-              <span class="hint" style="margin:0">자 ×</span>
-              <input id="cfgLines" type="number" min="3" max="12" value="6" style="width:54px" title="최대 줄 수">
-              <span class="hint" style="margin:0">줄</span>
+              <input id="cfgWidth" type="number" value="45" style="width:60px">
+              <input id="cfgLines" type="number" value="5" style="width:54px">
               <button class="btn" id="fitAllBtn">전체 줄 맞춤</button>
             </span>
+          </div>
+          <div class="inline mb" style="justify-content:space-between;background:#141d2c;border:1px solid var(--line);border-radius:7px;padding:6px 9px">
+            <span class="inline" style="gap:8px">
+              <span style="font-size:11.5px;color:var(--muted)">🧠 화주 기억</span>
+              <span id="memTag" class="autoBadge" style="display:none">📌 적용됨</span>
+              <span id="memCur" class="hint" style="margin:0"></span>
+            </span>
             <span class="inline">
-              <span id="memTag" class="autoBadge" style="display:none">📌 기억 적용됨</span>
               <span id="memMode" class="autoBadge" style="cursor:pointer" title="클릭하면 기억된 화주 목록">확인 중…</span>
-              <button class="btn" id="memSaveBtn" title="이 화주의 입력 방식을 기억합니다">💾 이 화주 기억</button>
+              <button class="btn" id="memSaveBtn" title="지금 입력한 내용을 이 화주의 표준으로 저장">💾 이 화주 기억</button>
             </span>
           </div>
 
@@ -355,8 +358,9 @@ function loadJobToForm(j){
   $("ccBadge").textContent = j.cc ? ("국가 "+j.cc) : "";
   $("ccBadge").style.display = j.cc ? "inline-block" : "none";
   $("curName").textContent = j.name ? ("· "+j.name) : "";
-  $("memTag").textContent = j.memApplied ? "📌 기억 적용됨" : "";
+  $("memTag").textContent = j.memApplied ? "📌 적용됨" : "";
   $("memTag").style.display = j.memApplied ? "inline-block" : "none";
+  updateMemCur(j);
   renderItems(j);
   refreshDescMeta();
   updateCounts();
@@ -670,6 +674,18 @@ function memKeys(get,region){
 }
 /* 화면에서 쓰는 대표 키 (표시용) */
 function shipperKey(get){ const k=shipKeys(get); return k.length?k[0]:""; }
+/* 현재 화면의 화주 키와 기억 매칭 상태를 항상 표시 */
+function updateMemCur(job){
+  const el=$("memCur"); if(!el) return;
+  const get = job ? (id=>job.fields[id]||"") : (id=>$(id).value);
+  const ships=shipKeys(get);
+  if(!ships.length){ el.textContent="(화주 미입력)"; el.style.color="var(--muted)"; return; }
+  const stored=Object.keys(MEM);
+  const hit = memKeys(get, (job?job.region:$("region").value)||"-").find(k=>MEM[k])
+           || ships.map(s=>stored.find(k=>k.startsWith(s+"@"))).find(Boolean);
+  el.textContent = ships[0] + (hit ? "  ✓ 기억 있음" : "  · 기억 없음(추출 시 저장)");
+  el.style.color = hit ? "var(--ok)" : "var(--muted)";
+}
 $("memSaveBtn").onclick=async()=>{
   syncFormToJob();
   const get=id=>$(id).value;
@@ -677,13 +693,15 @@ $("memSaveBtn").onclick=async()=>{
   const keys=memKeys(get,region);
   if(!keys.length){ alert("Shipper 정보가 있어야 기억할 수 있어요.\n(Shipper 또는 AMS Shipper Name을 먼저 입력)"); return; }
   const rec={}; MEM_FIELDS.forEach(id=>{ const v=$(id).value.trim(); if(v) rec[id]=v; });
+  const j=curJob(); if(j&&j.items&&j.items.length) rec._items=j.items.slice();
   let where="local";
   for(const k of keys){ where=await memPut(k,rec); }   // 이름/원문 두 키 모두에 저장
   alert((where==="server"?"[팀 전체 공유] ":"[이 브라우저에만] ")
     +"기억 완료\n\n화주키: "+keys[0]
     +"\n지역: "+region
-    +"\n\n다음에 같은 화주+지역 서류를 넣으면 자동으로 채워집니다.");
+    +"\n\n다음에 같은 화주 서류를 넣으면 자동으로 채워집니다.");
   $("memTag").textContent="📌 기억됨"; $("memTag").style.display="inline-block";
+  updateMemMode(); updateMemCur(curJob());
 };
 $("memMode").onclick=()=>{
   const stored=Object.keys(MEM);
