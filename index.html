@@ -127,9 +127,10 @@
       <div class="body">
         <div id="drop">
           <b>파일 여러 개를 한꺼번에 끌어다 놓기</b><br>
-          <small>PDF · XLSX · XLS · 클릭 선택</small>
-          <input type="file" id="file" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>
+          <small>PDF · XLSX · XLS · 이미지(PNG/JPG) · 클릭 선택</small>
+          <input type="file" id="file" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp" multiple hidden>
         </div>
+        <div class="hint" style="margin-top:6px">📋 안 읽히면: <b>화면 캡처 후 Ctrl+V</b> · <b>텍스트 복사 후 Ctrl+V</b></div>
         <div id="status"></div>
         <div id="jobs"></div>
       </div>
@@ -437,17 +438,40 @@ fileInput.onchange=e=>addFiles(e.target.files);
 function setStatus(html,cls){ $("status").innerHTML = html ? `<div class="${cls||'busybox'}">${html}</div>` : ""; }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-function isBlank(j){ return !j.file && !FIELDS.some(id=>(j.fields[id]||"").trim()!==""); }
+function isBlank(j){ return j.status==="done" && !j.file && !j.pasteText && !FIELDS.some(id=>(j.fields[id]||"").trim()!==""); }
 async function addFiles(list){
   const files=Array.from(list||[]); if(!files.length) return;
   syncFormToJob();
-  // 비어있는 기본 건은 제거
   JOBS = JOBS.filter(j=>!isBlank(j));
   files.forEach(f=>newJob(f.name,f));
   if(!curJob()) CUR=JOBS[0].id;
   renderJobs();
   await processQueue();
 }
+async function addTextJob(text){
+  syncFormToJob();
+  JOBS = JOBS.filter(j=>!isBlank(j));
+  const j=newJob("붙여넣은 텍스트", null); j.pasteText=text; j.status="pending";
+  if(!curJob()) CUR=j.id;
+  renderJobs();
+  await processQueue();
+}
+/* 붙여넣기(Ctrl+V): 이미지=캡처 → Gemini 비전 / 텍스트=Gemini 추출 */
+window.addEventListener("paste", e=>{
+  const dt=e.clipboardData; if(!dt) return;
+  // 입력칸 안에서 일반 텍스트 붙여넣기는 방해하지 않음
+  const inField = /^(INPUT|TEXTAREA)$/.test((e.target&&e.target.tagName)||"");
+  for(const it of dt.items||[]){
+    if(it.type && it.type.indexOf("image")===0){
+      const blob=it.getAsFile();
+      if(blob){ let f; try{ f=new File([blob],"화면캡처.png",{type:blob.type||"image/png"}); }catch(_){ f=blob; f.name="화면캡처.png"; }
+        e.preventDefault(); addFiles([f]); return; }
+    }
+  }
+  if(inField) return;                    // 칸 안에 텍스트 붙여넣기는 그대로 두기
+  const text=dt.getData("text");
+  if(text && text.trim().length>=25){ e.preventDefault(); addTextJob(text); }
+});
 async function processQueue(){
   const queue=JOBS.filter(j=>j.status==="pending");
   let done=0;
@@ -478,25 +502,34 @@ async function processQueue(){
 }
 function readBuf(file){ return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(new Error("파일 읽기 실패"));r.readAsArrayBuffer(file);}); }
 
+const IMG_EXT=["png","jpg","jpeg","webp","gif","bmp"];
+const IMG_MIME={png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp",gif:"image/gif",bmp:"image/bmp"};
 async function processJob(job){
-  const buf=await readBuf(job.file);
-  const ext=job.name.split(".").pop().toLowerCase();
   // 파일명에서 MAWB 번호
   const digits=(job.name.match(/\d[\d-\s]{9,}\d/g)||[]).map(s=>s.replace(/\D/g,"")).find(s=>s.length>=11);
   if(digits){ const m=digits.slice(0,11); job.fields.b_mawb=m.slice(0,3)+"-"+m.slice(3); if(MODE==="check") job.type="MAWB"; }
 
   let obj;
-  if(ext==="pdf"){
-    obj=await serverExtract(toBase64(buf),"application/pdf");
-  }else{
-    const wb=XLSX.read(buf,{type:"array"});
-    const parts=[];
-    wb.SheetNames.slice(0,5).forEach(n=>{
-      const csv=XLSX.utils.sheet_to_csv(wb.Sheets[n],{blankrows:false});
-      if(csv.trim()) parts.push("### SHEET: "+n+"\n"+csv);
-    });
-    obj=await serverExtract(null,null,parts.join("\n\n").slice(0,120000));
+  if(job.pasteText){                                   // 텍스트 붙여넣기
+    obj=await serverExtract(null,null,job.pasteText.slice(0,120000));
     if(MODE==="input") job.type="HAWB";
+  }else{
+    const buf=await readBuf(job.file);
+    const ext=job.name.split(".").pop().toLowerCase();
+    if(ext==="pdf"){
+      obj=await serverExtract(toBase64(buf),"application/pdf");
+    }else if(IMG_EXT.includes(ext)){                   // 이미지(캡처/사진)
+      obj=await serverExtract(toBase64(buf), IMG_MIME[ext]||"image/png");
+    }else{                                             // 엑셀
+      const wb=XLSX.read(buf,{type:"array"});
+      const parts=[];
+      wb.SheetNames.slice(0,5).forEach(n=>{
+        const csv=XLSX.utils.sheet_to_csv(wb.Sheets[n],{blankrows:false});
+        if(csv.trim()) parts.push("### SHEET: "+n+"\n"+csv);
+      });
+      obj=await serverExtract(null,null,parts.join("\n\n").slice(0,120000));
+      if(MODE==="input") job.type="HAWB";
+    }
   }
   if(obj.error) throw new Error(obj.error+(obj.detail?(" / "+obj.detail):""));
   applyToJob(job,obj);
