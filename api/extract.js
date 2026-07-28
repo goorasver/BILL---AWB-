@@ -83,10 +83,25 @@ async function pickModel(key) {
   }
 }
 
-async function generate(model, key, base64, mime, text) {
+// 화주별 "입력 공식" 학습: 이전에 완성한 같은 화주 AWB(example)를 스타일 기준으로 제시
+function styleInstruction(ex) {
+  return `
+
+=== SHIPPER-SPECIFIC HOUSE STYLE (LEARNED) ===
+This shipper fills the AWB with a FIXED house formula that OVERRIDES the generic rules above.
+Below is a PREVIOUS finished AWB for the SAME shipper (JSON of field values). Reproduce the SAME formula for the NEW document:
+- Follow the SAME source→field mapping this example implies (e.g. if the example's consignee is the BILL-TO address and notify is the SHIP-TO address, do the same).
+- Reuse the shipper's standard blocks (shipper_name/address/tel/email) and the consignee's VAT/EORI/tel/ATTN FROM THE EXAMPLE when the new document doesn't contain them.
+- Write "description" in the SAME style/wording as the example (e.g. if the example summarizes goods into a customs category like "SKIN CARE COSMETICS" instead of listing item names, do the same; keep the same layout of INV NO / HS CODE / incoterm lines). Change ONLY the variable parts (item category if items differ, quantities, invoice numbers, HS) to match the NEW document.
+- This overrides the earlier "do NOT summarize description" rule.
+PREVIOUS AWB EXAMPLE (JSON):
+${JSON.stringify(ex).slice(0, 6000)}
+Now output the JSON for the NEW document, matching this shipper's style.`;
+}
+
+async function generate(model, key, base64, mime, text, promptText) {
   const url = `${BASE}/models/${model}:generateContent?key=${key}`;
-  // 엑셀은 CSV 텍스트로, PDF/이미지는 파일 그대로 전달
-  const parts = [{ text: GEM_PROMPT }];
+  const parts = [{ text: promptText || GEM_PROMPT }];
   if (text) parts.push({ text: "\n--- DOCUMENT (spreadsheet converted to CSV) ---\n" + text });
   else parts.push({ inline_data: { mime_type: mime || "application/pdf", data: base64 } });
   const body = {
@@ -103,14 +118,13 @@ async function generate(model, key, base64, mime, text) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// 일시적 과부하(503) / 요청폭주(429) / 서버오류(500)면 간격을 두고 재시도
-async function generateWithRetry(model, key, base64, mime, text) {
+async function generateWithRetry(model, key, base64, mime, text, promptText) {
   const delays = [900, 2200, 4500];
   let r;
   for (let i = 0; i <= delays.length; i++) {
-    r = await generate(model, key, base64, mime, text);
+    r = await generate(model, key, base64, mime, text, promptText);
     if (r.ok) return r;
-    if (r.status !== 503 && r.status !== 429 && r.status !== 500) return r; // 재시도 무의미
+    if (r.status !== 503 && r.status !== 429 && r.status !== 500) return r;
     if (i < delays.length) await sleep(delays[i]);
   }
   return r;
@@ -119,11 +133,16 @@ async function generateWithRetry(model, key, base64, mime, text) {
 export default async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).json({ error: "POST only" }); return; }
   try {
-    const { base64, mime, text } = req.body || {};
+    const { base64, mime, text, example } = req.body || {};
     if (!base64 && !text) { res.status(400).json({ error: "no input (base64/text missing)" }); return; }
 
     const key = process.env.GEMINI_API_KEY;
     if (!key) { res.status(500).json({ error: "GEMINI_API_KEY 환경변수가 설정되지 않았습니다 (Vercel > Settings > Environment Variables)" }); return; }
+
+    // 화주 예시가 있으면 스타일 학습 프롬프트 사용
+    const promptText = (example && typeof example === "object")
+      ? GEM_PROMPT + styleInstruction(example)
+      : GEM_PROMPT;
 
     // 사용할 모델 선택 (환경변수 우선, 없으면 자동 조회)
     let model = await pickModel(key);
@@ -133,7 +152,7 @@ export default async function handler(req, res) {
     let r, usedModel, lastText = "";
     for (const m of fallbacks) {
       if (!m) continue;
-      r = await generateWithRetry(m, key, base64, mime, text);
+      r = await generateWithRetry(m, key, base64, mime, text, promptText);
       if (r.ok) { usedModel = m; break; }
       lastText = await r.text();
       // 모델 없음(404) 또는 과부하(503/429)면 다른 모델로 계속 시도, 그 외(키/권한 등)는 중단

@@ -491,10 +491,12 @@ async function processQueue(){
       +`<div style="margin-top:8px"><button class="btn" id="retryBtn">🔄 실패한 ${errs.length}건 다시 시도</button></div>`,"warnbox");
     const rb=$("retryBtn"); if(rb) rb.onclick=()=>{ errs.forEach(j=>{j.status="pending";j.msg="";}); renderJobs(); processQueue(); };
   }else{
-    const applied=queue.filter(j=>j.memApplied);
-    const memInfo = applied.length
-      ? `<br>📌 기억 적용 ${applied.length}건 (${applied.map(j=>esc(j.memKey||"")).join(", ")})`
-      : `<br>📌 기억된 화주 없음 — 추출하면 그 화주가 기억됩니다 (현재 ${Object.keys(MEM).length}곳 저장됨)`;
+    const styled=queue.filter(j=>j.memStyled);
+    const applied=queue.filter(j=>j.memApplied && !j.memStyled);
+    let memInfo="";
+    if(styled.length) memInfo+=`<br>🧠 화주 공식 재현 ${styled.length}건 (${styled.map(j=>esc(j.memKey||"")).join(", ")})`;
+    if(applied.length) memInfo+=`<br>📌 기억 적용 ${applied.length}건`;
+    if(!styled.length && !applied.length) memInfo=`<br>📌 기억된 화주 없음 — 추출하면 학습됩니다 (현재 ${Object.keys(MEM).length}곳)`;
     setStatus(`✔ ${queue.length}건 추출 완료. 목록에서 건을 눌러 확인·수정하세요.`+memInfo,"okbox");
   }
   // 처리 후 첫 건 선택
@@ -504,39 +506,50 @@ function readBuf(file){ return new Promise((res,rej)=>{const r=new FileReader();
 
 const IMG_EXT=["png","jpg","jpeg","webp","gif","bmp"];
 const IMG_MIME={png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp",gif:"image/gif",bmp:"image/bmp"};
+// 문서 → Gemini 전송용 payload 한 번만 만들어 재사용(2단계 호출)
+async function buildPayload(job){
+  if(job.pasteText) return {text: job.pasteText.slice(0,120000)};
+  const buf=await readBuf(job.file);
+  const ext=job.name.split(".").pop().toLowerCase();
+  if(ext==="pdf") return {base64:toBase64(buf), mime:"application/pdf"};
+  if(IMG_EXT.includes(ext)) return {base64:toBase64(buf), mime:IMG_MIME[ext]||"image/png"};
+  const wb=XLSX.read(buf,{type:"array"}); const parts=[];
+  wb.SheetNames.slice(0,5).forEach(n=>{ const csv=XLSX.utils.sheet_to_csv(wb.Sheets[n],{blankrows:false}); if(csv.trim()) parts.push("### SHEET: "+n+"\n"+csv); });
+  return {text: parts.join("\n\n").slice(0,120000)};
+}
+function regionFromObj(o){
+  const cc=String(o.dest_country||"").toUpperCase();
+  if(CC2REGION[cc]) return CC2REGION[cc];
+  return detectRegion([o.consignee,o.destination,o.notify].join(" "));
+}
 async function processJob(job){
   // 파일명에서 MAWB 번호
   const digits=(job.name.match(/\d[\d-\s]{9,}\d/g)||[]).map(s=>s.replace(/\D/g,"")).find(s=>s.length>=11);
   if(digits){ const m=digits.slice(0,11); job.fields.b_mawb=m.slice(0,3)+"-"+m.slice(3); if(MODE==="check") job.type="MAWB"; }
 
-  let obj;
-  if(job.pasteText){                                   // 텍스트 붙여넣기
-    obj=await serverExtract(null,null,job.pasteText.slice(0,120000));
-    if(MODE==="input") job.type="HAWB";
-  }else{
-    const buf=await readBuf(job.file);
-    const ext=job.name.split(".").pop().toLowerCase();
-    if(ext==="pdf"){
-      obj=await serverExtract(toBase64(buf),"application/pdf");
-    }else if(IMG_EXT.includes(ext)){                   // 이미지(캡처/사진)
-      obj=await serverExtract(toBase64(buf), IMG_MIME[ext]||"image/png");
-    }else{                                             // 엑셀
-      const wb=XLSX.read(buf,{type:"array"});
-      const parts=[];
-      wb.SheetNames.slice(0,5).forEach(n=>{
-        const csv=XLSX.utils.sheet_to_csv(wb.Sheets[n],{blankrows:false});
-        if(csv.trim()) parts.push("### SHEET: "+n+"\n"+csv);
-      });
-      obj=await serverExtract(null,null,parts.join("\n\n").slice(0,120000));
-      if(MODE==="input") job.type="HAWB";
-    }
-  }
+  const p=await buildPayload(job);
+  // 1단계: 일반 추출
+  let obj=await serverExtract(p.base64,p.mime,p.text);
   if(obj.error) throw new Error(obj.error+(obj.detail?(" / "+obj.detail):""));
-  applyToJob(job,obj);
+  if(job.pasteText || (job.file && /\.(xlsx|xls|csv)$/i.test(job.name))){ if(MODE==="input") job.type="HAWB"; }
+
+  // 2단계: 이 화주의 "입력 공식" 예시가 있으면 그 스타일로 다시 만들기
+  let styled=false;
+  const getObj = id => id==="as_name" ? (obj.shipper_name||"") : id==="p_shipper" ? (obj.shipper||"") : "";
+  const rec = findMemRec(getObj, regionFromObj(obj));
+  if(rec && rec._example){
+    try{
+      const obj2=await serverExtract(p.base64,p.mime,p.text, rec._example);
+      if(obj2 && !obj2.error){ obj=obj2; styled=true; }
+    }catch(e){}
+  }
+  applyToJob(job,obj, styled);   // styled면 단순 필드복사 기억은 건너뜀
+  if(styled){ job.memApplied=true; job.memStyled=true; job.memKey=(rec&&rec._key)||""; }
 }
 function toBase64(buf){ let s="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s); }
-async function serverExtract(base64,mime,text){
+async function serverExtract(base64,mime,text,example){
   const payload = text ? {text} : {base64,mime};
+  if(example) payload.example = example;
   const res=await fetch("/api/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   return await res.json().catch(()=>({error:"응답 파싱 실패 ("+res.status+")"}));
 }
@@ -549,7 +562,7 @@ const MAP={
   notify_name:"an_name", notify_city:"an_city", notify_street:"an_street", notify_zip:"an_zip", notify_country:"an_country",
   form_no:"x_form", ba_no:"x_ba"
 };
-function applyToJob(job,o){
+function applyToJob(job,o,styled){
   Object.entries(MAP).forEach(([k,id])=>{ if(o[k]!=null&&o[k]!=="") job.fields[id]=o[k]; });
   if(o.eori && !job.fields.ac_tax) job.fields.ac_tax=o.eori;
   job.items = Array.isArray(o.items) ? o.items.filter(x=>x&&String(x).trim()) : [];
@@ -558,17 +571,19 @@ function applyToJob(job,o){
   job.hs = (o.hs_code||"").trim();
   if(MODE==="check" && !job.manualType){ if(o.is_mawb===true)job.type="MAWB"; else if(o.is_mawb===false)job.type="HAWB"; }
   if(job.type==="MAWB" && !(job.fields.d_desc||"").trim()) job.fields.d_desc=CONSOL_TXT;
-  // ① 지역 먼저 확정 (기억이 '화주@지역'으로 저장되므로 순서가 중요)
+  // 지역 확정
   const d = detectCC(id=>job.fields[id]||"");
   job.cc = d.cc || String(o.dest_country||"").toUpperCase();
   let reg = d.region || CC2REGION[String(o.dest_country||"").toUpperCase()] || "";
   if(reg) job.region=reg;
   job.used_model=o.used_model||"";
-  // ② 그다음 기억 적용 (화주+지역 정확히 매칭)
-  applyMemory(job);
-  // ③ 품명 자동 구성 (버튼 안 눌러도 기본 적용) — 마스터는 제외
-  if(job.type!=="MAWB") job.fields.d_desc=composeDesc(job);
-  // ④ 시스템 칸 규격(44자)에 맞춰 주소 줄 나누기 + 5줄 넘침은 ** 로 Mark로
+  if(styled){
+    // 화주 공식(예시)으로 Gemini가 이미 스타일 재현함 → 품명도 그대로 사용
+  }else{
+    applyMemory(job);                                         // 예시 없을 때: 필드복사 기억
+    if(job.type!=="MAWB") job.fields.d_desc=composeDesc(job); // 품명 기본 구성
+  }
+  // 칸 규격(45자) 줄 나누기 + 5줄 넘침 ** → Mark
   ["p_shipper","p_consignee","p_notify"].forEach(id=>{ job.fields[id]=wrapLines(job.fields[id]||"", cfgW()); });
   autoOverflowJob(job);
 }
@@ -727,6 +742,7 @@ $("memSaveBtn").onclick=async()=>{
   if(!keys.length){ alert("Shipper 정보가 있어야 기억할 수 있어요.\n(Shipper 또는 AMS Shipper Name을 먼저 입력)"); return; }
   const rec={}; MEM_FIELDS.forEach(id=>{ const v=$(id).value.trim(); if(v) rec[id]=v; });
   const j=curJob(); if(j&&j.items&&j.items.length) rec._items=j.items.slice();
+  rec._example = toExample(id=>$(id).value);   // 화주 공식 학습용 예시
   let where="local";
   for(const k of keys){ where=await memPut(k,rec); }   // 이름/원문 두 키 모두에 저장
   alert((where==="server"?"[팀 전체 공유] ":"[이 브라우저에만] ")
@@ -748,27 +764,33 @@ $("memMode").onclick=()=>{
     "\n결과: "+(hit?("일치 → "+hit):"일치하는 기억 없음")
   );
 };
-function applyMemory(job){
-  const get=id=>job.fields[id]||"";
-  const ships=shipKeys(get); if(!ships.length) return false;
-  // 1) 같은 화주 + 같은 지역  2) 없으면 같은 화주의 다른 지역 기록
-  let rec=null, used="";
-  for(const k of memKeys(get, job.region)){ if(MEM[k]){ rec=MEM[k]; used=k; break; } }
-  if(!rec){
-    for(const s of ships){
-      const hit=Object.keys(MEM).find(k=>k.startsWith(s+"@"));
-      if(hit){ rec=MEM[hit]; used=hit; break; }
-    }
+/* 화주 기억 레코드 찾기 (화주@지역 우선, 없으면 같은 화주 다른 지역) */
+function findMemRec(get, region){
+  const ships=shipKeys(get); if(!ships.length) return null;
+  for(const k of memKeys(get, region)){ if(MEM[k]){ MEM[k]._key=k; return MEM[k]; } }
+  for(const s of ships){
+    const hit=Object.keys(MEM).find(k=>k.startsWith(s+"@"));
+    if(hit){ MEM[hit]._key=hit; return MEM[hit]; }
   }
+  return null;
+}
+function applyMemory(job){
+  const rec=findMemRec(id=>job.fields[id]||"", job.region);
   if(!rec) return false;
   const overwrite = (MODE==="input");   // CI/PL 입력=덮어쓰기 / 체크빌=빈칸만
   Object.entries(rec).forEach(([id,v])=>{
-    if(id==="_items") return;
+    if(id==="_items"||id==="_example"||id==="_key") return;
     if(overwrite && MEM_OVERWRITE.includes(id)) job.fields[id]=v;
     else if(!(job.fields[id]||"").trim()) job.fields[id]=v;
   });
   if(Array.isArray(rec._items) && !(job.items&&job.items.length)) job.items=rec._items.slice();
-  job.memApplied=true; job.memKey=used; return true;
+  job.memApplied=true; job.memKey=rec._key||""; return true;
+}
+/* 내부 필드값 → Gemini 스키마 예시(JSON)로 변환 (화주 공식 학습용) */
+function toExample(getFields){
+  const ex={};
+  Object.entries(MAP).forEach(([schemaKey,id])=>{ const v=(getFields(id)||"").trim(); if(v) ex[schemaKey]=v; });
+  return ex;
 }
 
 /* ================= 마크 도형 표기 ================= */
@@ -980,6 +1002,7 @@ async function rememberJob(job){
   if(!keys.length) return "";
   const rec={}; MEM_FIELDS.forEach(id=>{ const v=String(job.fields[id]||"").trim(); if(v) rec[id]=v; });
   if(job.items&&job.items.length) rec._items=job.items.slice();
+  rec._example = toExample(id=>job.fields[id]);   // 화주 공식 학습용 예시(스키마 형태)
   if(!Object.keys(rec).length) return "";
   for(const k of keys) await memPut(k,rec);
   return keys[0];
