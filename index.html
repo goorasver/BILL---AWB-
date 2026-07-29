@@ -76,7 +76,7 @@
   .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   @media(max-width:1080px){.split{grid-template-columns:1fr}}
   /* Party | Mark | Description 3단 (Party·Mark 넉넉히, Description 좁게) */
-  .form3{display:grid;grid-template-columns:minmax(0,395px) minmax(0,395px) minmax(0,400px);gap:14px;align-items:start}
+  .form3{display:grid;grid-template-columns:minmax(0,395px) minmax(0,395px) minmax(400px,1fr);gap:14px;align-items:start}
   @media(max-width:1240px){.form3{grid-template-columns:1fr 1fr}}
   @media(max-width:820px){.form3{grid-template-columns:1fr}}
   .form3 textarea.boxed{width:100%}
@@ -265,15 +265,12 @@
             <div id="itemChips" class="inline" style="gap:6px;margin-bottom:10px"></div>
           </div>
           <div id="descMeta" class="hint" style="margin-top:6px"></div>
-          <div id="hsCheck" class="hint" style="margin-top:6px"></div>
+          <div id="hsCheck" class="hint" style="margin-top:6px;margin-bottom:10px"></div>
+          <label class="f">Handling Information</label>
+          <textarea id="d_handling" rows="4" placeholder="예: EDI : 26SDPF1083I61120169  127CT/1516KG  ·  CARGO IN TRANSIT ..."></textarea>
+          <div class="hint">수출면장(EDI) 번호·운송 문구 등. 서류에 있으면 자동 추출, 없으면 직접 입력.</div>
         </fieldset>
       </div>
-
-      <fieldset style="margin-top:14px">
-        <legend>Handling Information</legend>
-        <textarea id="d_handling" rows="2" placeholder="예: EDI : 26SDPF1083I61120169  127CT/1516KG"></textarea>
-        <div class="hint">수출면장(EDI) 번호 등. 서류에 있으면 자동 추출, 없으면 직접 입력.</div>
-      </fieldset>
 
       <div class="amsWrap">
         <div class="amsHead">
