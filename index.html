@@ -62,6 +62,17 @@
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
   .mb{margin-bottom:10px}
+  /* 시스템처럼 줄선 + 45칸 세로선이 보이는 입력칸 */
+  textarea.boxed{
+    font-family:"Consolas","Courier New",monospace; font-size:12.5px; line-height:21px;
+    padding:6px 8px; white-space:pre; overflow-x:auto;
+    background-color:var(--field);
+    background-image:
+      repeating-linear-gradient(to bottom, transparent 0, transparent 20px, rgba(255,255,255,.08) 20px, rgba(255,255,255,.08) 21px),
+      linear-gradient(to right, transparent calc(8px + 45ch), rgba(255,120,120,.55) calc(8px + 45ch), rgba(255,120,120,.55) calc(8px + 45ch + 1px), transparent calc(8px + 45ch + 1px));
+    background-repeat:repeat, no-repeat;
+    background-attachment:local, local;
+  }
   .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   @media(max-width:1080px){.split{grid-template-columns:1fr}}
   .btn{border:1px solid var(--fieldbd);background:var(--field);color:var(--ink);border-radius:7px;padding:8px 12px;cursor:pointer;font:inherit;font-weight:700;font-size:12.5px}
@@ -210,22 +221,16 @@
           </div>
 
           <div class="mb">
-            <div class="inline" style="justify-content:space-between">
-              <label class="f" style="margin:0">Shipper <span id="cnt_p_shipper" class="hint" style="margin:0"></span></label>
-              <button class="btn ovBtn" data-t="p_shipper" data-mark="**" data-to="d_marks">넘침 → Mark (**)</button>
-            </div>
-            <textarea id="p_shipper" style="min-height:152px"></textarea>
+            <label class="f">Shipper <span id="cnt_p_shipper" class="hint" style="margin:0"></span></label>
+            <textarea id="p_shipper" class="boxed" rows="6"></textarea>
           </div>
           <div class="mb">
-            <div class="inline" style="justify-content:space-between">
-              <label class="f" style="margin:0">Consignee <span id="cnt_p_consignee" class="hint" style="margin:0"></span></label>
-              <button class="btn ovBtn" data-t="p_consignee" data-mark="**" data-to="d_marks">넘침 → Mark (**)</button>
-            </div>
-            <textarea id="p_consignee" style="min-height:152px"></textarea>
+            <label class="f">Consignee <span id="cnt_p_consignee" class="hint" style="margin:0"></span></label>
+            <textarea id="p_consignee" class="boxed" rows="6"></textarea>
           </div>
           <div>
             <label class="f">Notify <span id="cnt_p_notify" class="hint" style="margin:0"></span></label>
-            <textarea id="p_notify" style="min-height:120px"></textarea>
+            <textarea id="p_notify" class="boxed" rows="4"></textarea>
           </div>
         </fieldset>
         <fieldset style="margin:0">
@@ -256,8 +261,8 @@
               <button class="btn" data-shape="IN DIA">◇ IN DIA</button>
             </span>
           </div>
-          <textarea id="d_marks" style="min-height:56px"></textarea>
-          <div class="hint">도형 안 글자 마크는 <b>글자 → 다음 줄에 도형 표기</b> (예: HOHODANG / IN DIA)</div>
+          <textarea id="d_marks" class="boxed" rows="9"></textarea>
+          <div class="hint">넘치는 Shipper/Consignee 주소는 사람이 직접 여기로 옮기세요 (`**` 등). 도형 마크: 글자 → 다음 줄 <b>IN DIA</b></div>
         </fieldset>
       </div>
       <div class="hint" style="margin:-4px 0 12px">🔋 개수 입력 후 클릭 → " " 로 감싸 3줄 삽입: <b>" 40 PKGS OF LITHIUM ION / BATTERIES IN COMPLIANCE WITH / SECTION II OF PI 967"</b></div>
@@ -586,9 +591,8 @@ function applyToJob(job,o,styled){
     applyMemory(job);                                         // 예시 없을 때: 필드복사 기억
     if(job.type!=="MAWB") job.fields.d_desc=composeDesc(job); // 품명 기본 구성
   }
-  // 칸 규격(45자) 줄 나누기 + 5줄 넘침 ** → Mark
+  // 칸 규격(45자)에 맞춰 줄만 나눔 (넘침 자동이동은 하지 않음 — 사람이 직접 옮김)
   ["p_shipper","p_consignee","p_notify"].forEach(id=>{ job.fields[id]=wrapLines(job.fields[id]||"", cfgW()); });
-  autoOverflowJob(job);
 }
 
 /* ================= 국가/지역 감지 (Consignee 기준) ================= */
@@ -804,8 +808,8 @@ $("shapeBtns").querySelectorAll("button").forEach(b=> b.onclick=()=>{
 });
 
 /* ============ 칸 규격 (글자수/줄수) & 주소 줄 나누기 ============ */
-const BOX_W=45;          // 한 줄 최대 글자수
-const BOX_KEEP=5;        // 이 줄 수를 넘으면 넘침 처리(** 로 Mark/Notify로)
+const BOX_W=45;          // 한 줄 최대 글자수 (강제)
+const BOX_KEEP=6;        // 시스템 박스 줄 수(이 줄 넘으면 사람이 직접 Mark로 옮김)
 $("cfgWidth").value=BOX_W; $("cfgLines").value=BOX_KEEP;
 function cfgW(){ return BOX_W; }
 function cfgL(){ return BOX_KEEP; }
@@ -852,30 +856,24 @@ function updateCounts(){
   ["p_shipper","p_consignee","p_notify"].forEach(id=>{
     const el=$("cnt_"+id); if(!el) return;
     const lines=($(id).value?$(id).value.split(/\r?\n/):[]);
-    const over=lines.length>cfgL() || lines.some(l=>l.length>cfgW());
-    el.textContent = `${lines.length}/${cfgL()}줄`+(over?" ⚠ 넘침":"");
+    const over=lines.length>cfgL();
+    el.textContent = `${lines.length}/${cfgL()}줄`+(over?" ⚠ 초과분 Mark로 옮기세요":"");
     el.style.color = over ? "var(--warn)" : "var(--muted)";
   });
 }
-["p_shipper","p_consignee","p_notify"].forEach(id=>{
-  $(id).addEventListener("input",updateCounts);
-  // 칸을 벗어나면 입력을 마칠 때 자동으로 줄 맞춤(44자) + 넘침 처리
-  $(id).addEventListener("blur",()=>{
-    fitField(id); syncFormToJob();
-    const j=curJob(); if(j){ autoOverflowJob(j); loadJobToForm(j); }
-    updateCounts();
+/* 한 줄 45자 강제: 입력 중 각 줄이 45자를 넘으면 그 자리서 줄바꿈 */
+function enforceWidth(el){
+  const lines=String(el.value).split(/\r?\n/);
+  let changed=false;
+  const out=[];
+  lines.forEach(l=>{
+    while(l.length>cfgW()){ out.push(l.slice(0,cfgW())); l=l.slice(cfgW()); changed=true; }
+    out.push(l);
   });
-});
-/* 넘친 줄을 다른 칸으로 옮기고 마커(*, **) 붙이기 */
-document.querySelectorAll(".ovBtn").forEach(b=> b.onclick=()=>{
-  const src=$(b.dataset.t), dst=$(b.dataset.to), mark=b.dataset.mark, L=cfgL();
-  const lines=wrapLines(src.value,cfgW()).split(/\r?\n/);
-  if(lines.length<=L){ alert("넘치는 줄이 없습니다."); return; }
-  const keep=lines.slice(0,L), over=lines.slice(L);
-  keep[keep.length-1]=keep[keep.length-1].replace(/\s*\*+$/,"")+mark;
-  src.value=keep.join("\n");
-  dst.value=(dst.value?dst.value.replace(/\s*$/,"")+"\n":"")+mark+over.join("\n");
-  syncFormToJob(); updateCounts(); runValidation();
+  if(changed){ const pos=el.selectionStart; el.value=out.join("\n"); try{el.selectionStart=el.selectionEnd=pos+1;}catch(e){} }
+}
+["p_shipper","p_consignee","p_notify"].forEach(id=>{
+  $(id).addEventListener("input",()=>{ enforceWidth($(id)); updateCounts(); });
 });
 
 /* ============ 품명 자동 구성 (아이템 → INV → 유럽 HS) ============ */
