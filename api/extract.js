@@ -12,7 +12,7 @@ item_qtys   (array of strings, SAME length/order as items — the quantity for e
 marks   (shipping marks — see the SHIPPING MARK rule below),
 handling_info   (the AWB "Handling Information" area — export license (EDI) line and/or handling/transit remarks, e.g. "EDI : 26SDPF1083I61120169 127CT/1516KG" or "CARGO IN TRANSIT TO RIYADH, KKIA BONDED ZONE"; "" if none),
 hs_code   (HS code / HS.CODE / tariff code if present, digits and dots only, e.g. 3304.99.1000; "" if none),
-shipper_name, shipper_city, shipper_street, shipper_zip, shipper_country, shipper_tel, shipper_email,
+shipper_name, shipper_state, shipper_city, shipper_street, shipper_zip, shipper_country, shipper_tel, shipper_email,
 consignee_name, consignee_state, consignee_city, consignee_street, consignee_zip, consignee_country, consignee_tel, consignee_email, consignee_taxid,
 notify_name, notify_city, notify_street, notify_zip, notify_country,
 eori, form_no, ba_no,
@@ -52,7 +52,7 @@ Also always fill these when present (they are frequently needed): consignee_tel,
 
 If a value truly is not in the document, return "" — never guess or invent.
 
-Rules: shipper_city = shipper's city FULL name (e.g. SHENZHEN, SHANGHAI, HONG KONG).
+Rules: shipper_city = shipper's city FULL name (e.g. SHENZHEN, SHANGHAI, HONG KONG). shipper_state = shipper's state/province (abbrev if applicable, else "").
 consignee_state = state/province ABBREVIATION (e.g. NY, CA for US). country = ISO 2-letter code (CN, US, ...).
 tel/zip/email in top-level and consignee_* = the CONSIGNEE's.
 eori = EORI number = 2-letter country code + digits (e.g. IT07607410961, DE123456789). Look for a token matching that pattern.

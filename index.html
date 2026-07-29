@@ -282,10 +282,10 @@
             <div class="amsBlock">
               <h4>Shipper</h4>
               <div class="mb"><label class="f">Name (풀네임)</label><input id="as_name"></div>
-              <div class="g2 mb"><div><label class="f">City (풀네임)</label><input id="as_city" placeholder="SHENZHEN"></div><div><label class="f">Country</label><input id="as_country" placeholder="CN"></div></div>
-              <div class="g2 mb"><div><label class="f">Zip</label><input id="as_zip"></div><div><label class="f">Tel</label><input id="as_tel"></div></div>
-              <div class="mb"><label class="f">Street</label><input id="as_street"></div>
-              <div><label class="f">Email (US ACAS)</label><input id="as_email"></div>
+              <div class="g2 mb"><div><label class="f">State</label><input id="as_state"></div><div><label class="f">City (풀네임)</label><input id="as_city" placeholder="SHENZHEN"></div></div>
+              <div class="g2 mb"><div><label class="f">Zip</label><input id="as_zip"></div><div><label class="f">Country</label><input id="as_country" placeholder="CN"></div></div>
+              <div class="g2 mb"><div><label class="f">Tel</label><input id="as_tel"></div><div><label class="f">Email (US ACAS)</label><input id="as_email"></div></div>
+              <div><label class="f">Street</label><input id="as_street"></div>
             </div>
             <div class="amsBlock">
               <h4>Consignee</h4>
@@ -341,7 +341,7 @@ const LITHIUM_TXT = n => `" ${n} PKGS OF LITHIUM ION\nBATTERIES IN COMPLIANCE WI
 const MAWB_RE = /\b\d{3}-?\s?\d{4}\s?\d{4}\b/;
 
 const FIELDS = ["b_mawb","b_dest","b_via","b_by","p_shipper","p_consignee","p_notify","d_desc","d_marks","d_handling",
- "as_name","as_city","as_country","as_zip","as_tel","as_street","as_email",
+ "as_name","as_state","as_city","as_country","as_zip","as_tel","as_street","as_email",
  "ac_name","ac_state","ac_city","ac_zip","ac_country","ac_street","ac_tel","ac_email","ac_tax",
  "an_name","an_city","an_country","an_zip","an_street","x_form","x_ba"];
 
@@ -570,7 +570,7 @@ const MAP={
   awb_no:"b_mawb", destination:"b_dest", via_to:"b_via", by:"b_by",
   shipper:"p_shipper", consignee:"p_consignee", notify:"p_notify",
   description:"d_desc", marks:"d_marks", handling_info:"d_handling",
-  shipper_name:"as_name", shipper_city:"as_city", shipper_street:"as_street", shipper_zip:"as_zip", shipper_country:"as_country", shipper_tel:"as_tel", shipper_email:"as_email",
+  shipper_name:"as_name", shipper_state:"as_state", shipper_city:"as_city", shipper_street:"as_street", shipper_zip:"as_zip", shipper_country:"as_country", shipper_tel:"as_tel", shipper_email:"as_email",
   consignee_name:"ac_name", consignee_state:"ac_state", consignee_city:"ac_city", consignee_street:"ac_street", consignee_zip:"ac_zip", consignee_country:"ac_country", consignee_tel:"ac_tel", consignee_email:"ac_email", consignee_taxid:"ac_tax",
   notify_name:"an_name", notify_city:"an_city", notify_street:"an_street", notify_zip:"an_zip", notify_country:"an_country",
   form_no:"x_form", ba_no:"x_ba"
@@ -687,7 +687,7 @@ $("itemAllBtn").onclick=()=>{ const j=curJob(); ((j&&j.items)||[]).forEach(addIt
 const MEM_KEY="bill_shipper_memory";
 /* 빌 입력(CI/PL) 모드에서 화주가 같으면 Shipper·Consignee·Notify가 거의 동일 → 덮어쓰기 대상 */
 const MEM_OVERWRITE=["p_shipper","p_consignee","p_notify",
-  "as_name","as_city","as_country","as_zip","as_tel","as_street","as_email",
+  "as_name","as_state","as_city","as_country","as_zip","as_tel","as_street","as_email",
   "ac_name","ac_state","ac_city","ac_zip","ac_country","ac_street","ac_tel","ac_email","ac_tax",
   "b_via","b_by","x_form","x_ba"];
 const MEM_FIELDS=[...MEM_OVERWRITE];
@@ -987,7 +987,7 @@ function buildData(job){
     party:{ shipper:f("p_shipper"), consignee:f("p_consignee"), notify:f("p_notify") },
     description:f("d_desc"), marks:f("d_marks"), handling_info:f("d_handling"),
     ams:{
-      shipper:{ name:f("as_name"), city:f("as_city"), street:f("as_street"), zip:f("as_zip"), country:f("as_country"), tel:f("as_tel"), email:f("as_email") },
+      shipper:{ name:f("as_name"), state:f("as_state"), city:f("as_city"), street:f("as_street"), zip:f("as_zip"), country:f("as_country"), tel:f("as_tel"), email:f("as_email") },
       consignee:{ name:f("ac_name"), state:f("ac_state"), city:f("ac_city"), street:f("ac_street"), zip:f("ac_zip"), country:f("ac_country"), tel:f("ac_tel"), email:f("ac_email"), tax_id:f("ac_tax") },
       notify:{ name:f("an_name"), city:f("an_city"), street:f("an_street"), zip:f("an_zip"), country:f("an_country") },
       form_no:f("x_form"), ba_no:f("x_ba")
