@@ -269,6 +269,12 @@
         </fieldset>
       </div>
 
+      <fieldset style="margin-top:14px">
+        <legend>Handling Information</legend>
+        <textarea id="d_handling" rows="2" placeholder="예: EDI : 26SDPF1083I61120169  127CT/1516KG"></textarea>
+        <div class="hint">수출면장(EDI) 번호 등. 서류에 있으면 자동 추출, 없으면 직접 입력.</div>
+      </fieldset>
+
       <div class="amsWrap">
         <div class="amsHead">
           <span>▤ AMS / EDI Address — 전 국가 입력</span>
@@ -337,7 +343,7 @@ const CONSOL_TXT = "CONSOLIDATION SHIPMENT AS\nPER ATTACHED MANIFEST";
 const LITHIUM_TXT = n => `" ${n} PKGS OF LITHIUM ION\nBATTERIES IN COMPLIANCE WITH\nSECTION II OF PI 967"`;
 const MAWB_RE = /\b\d{3}-?\s?\d{4}\s?\d{4}\b/;
 
-const FIELDS = ["b_mawb","b_dest","b_via","b_by","p_shipper","p_consignee","p_notify","d_desc","d_marks",
+const FIELDS = ["b_mawb","b_dest","b_via","b_by","p_shipper","p_consignee","p_notify","d_desc","d_marks","d_handling",
  "as_name","as_city","as_country","as_zip","as_tel","as_street","as_email",
  "ac_name","ac_state","ac_city","ac_zip","ac_country","ac_street","ac_tel","ac_email","ac_tax",
  "an_name","an_city","an_country","an_zip","an_street","x_form","x_ba"];
@@ -566,7 +572,7 @@ async function serverExtract(base64,mime,text,example){
 const MAP={
   awb_no:"b_mawb", destination:"b_dest", via_to:"b_via", by:"b_by",
   shipper:"p_shipper", consignee:"p_consignee", notify:"p_notify",
-  description:"d_desc", marks:"d_marks",
+  description:"d_desc", marks:"d_marks", handling_info:"d_handling",
   shipper_name:"as_name", shipper_city:"as_city", shipper_street:"as_street", shipper_zip:"as_zip", shipper_country:"as_country", shipper_tel:"as_tel", shipper_email:"as_email",
   consignee_name:"ac_name", consignee_state:"ac_state", consignee_city:"ac_city", consignee_street:"ac_street", consignee_zip:"ac_zip", consignee_country:"ac_country", consignee_tel:"ac_tel", consignee_email:"ac_email", consignee_taxid:"ac_tax",
   notify_name:"an_name", notify_city:"an_city", notify_street:"an_street", notify_zip:"an_zip", notify_country:"an_country",
@@ -982,7 +988,7 @@ function buildData(job){
     type:job.type, mode:MODE, source:job.name,
     basic:{ no:f("b_mawb"), master_no:job.master_no||"", invoice_no:job.invoice||"", hs_code:job.hs||"", destination:f("b_dest"), via_to:f("b_via"), by:f("b_by") },
     party:{ shipper:f("p_shipper"), consignee:f("p_consignee"), notify:f("p_notify") },
-    description:f("d_desc"), marks:f("d_marks"),
+    description:f("d_desc"), marks:f("d_marks"), handling_info:f("d_handling"),
     ams:{
       shipper:{ name:f("as_name"), city:f("as_city"), street:f("as_street"), zip:f("as_zip"), country:f("as_country"), tel:f("as_tel"), email:f("as_email") },
       consignee:{ name:f("ac_name"), state:f("ac_state"), city:f("ac_city"), street:f("ac_street"), zip:f("ac_zip"), country:f("ac_country"), tel:f("ac_tel"), email:f("ac_email"), tax_id:f("ac_tax") },
