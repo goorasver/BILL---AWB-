@@ -10,7 +10,7 @@ description   (the FULL goods description text exactly as written, do NOT summar
 items   (array of strings — each distinct goods/item NAME, one per element, no quantity/price in the name; [] if none),
 item_qtys   (array of strings, SAME length/order as items — the quantity for each item, e.g. "24 PCS", "630 PCS"; "" where unknown),
 marks   (shipping marks — see the SHIPPING MARK rule below),
-handling_info   (handling information / export license (EDI) line if present, e.g. "EDI : 26SDPF1083I61120169 127CT/1516KG"; "" if none),
+handling_info   (the AWB "Handling Information" area — export license (EDI) line and/or handling/transit remarks, e.g. "EDI : 26SDPF1083I61120169 127CT/1516KG" or "CARGO IN TRANSIT TO RIYADH, KKIA BONDED ZONE"; "" if none),
 hs_code   (HS code / HS.CODE / tariff code if present, digits and dots only, e.g. 3304.99.1000; "" if none),
 shipper_name, shipper_city, shipper_street, shipper_zip, shipper_country, shipper_tel, shipper_email,
 consignee_name, consignee_state, consignee_city, consignee_street, consignee_zip, consignee_country, consignee_tel, consignee_email, consignee_taxid,
