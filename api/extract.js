@@ -15,8 +15,12 @@ shipper_name, shipper_city, shipper_street, shipper_zip, shipper_country, shippe
 consignee_name, consignee_state, consignee_city, consignee_street, consignee_zip, consignee_country, consignee_tel, consignee_email, consignee_taxid,
 notify_name, notify_city, notify_street, notify_zip, notify_country,
 eori, form_no, ba_no,
-is_mawb (true if a master air waybill number = 3-digit airline prefix + 8 digits appears at top-right, else false),
+master_no (the number at the TOP-LEFT of an air waybill = airline 3-digit prefix + 8-digit serial, e.g. "988 ICN 14345564" -> "988-14345564"; "" if not an AWB),
+right_no (the reference/house number printed at the TOP-RIGHT corner of the AWB, e.g. "KYL26025"; "" if none),
+is_mawb (TRUE if right_no is empty OR right_no equals master_no; FALSE if right_no is a DIFFERENT number — then it is a house bill),
+hawb_no (if is_mawb is false, set this to right_no; else ""),
 dest_country (destination ISO 2-letter country code).
+For commercial invoice / packing list (no AWB layout): master_no="", right_no="", is_mawb=false.
 IMPORTANT — labels and positions differ by company. Match by MEANING, never by exact label text or cell position:
 - shipper (sender/exporter): SHIPPER, CONSIGNOR, EXPORTER, SELLER, SUPPLIER, VENDOR, FROM, 송하인, 수출자, 발송인
 - consignee (receiver/importer): CONSIGNEE, SHIP TO, DELIVER TO, DELIVERY ADDRESS, IMPORTER, BUYER, SOLD TO, MESSRS, 수하인, 수입자

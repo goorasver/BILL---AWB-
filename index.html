@@ -579,7 +579,19 @@ function applyToJob(job,o,styled){
   job.itemQtys = Array.isArray(o.item_qtys) ? o.item_qtys.map(x=>String(x||"").trim()) : [];
   job.invoice = (o.invoice_no||"").trim();
   job.hs = (o.hs_code||"").trim();
-  if(MODE==="check" && !job.manualType){ if(o.is_mawb===true)job.type="MAWB"; else if(o.is_mawb===false)job.type="HAWB"; }
+  // MAWB/HAWB 판별: 왼쪽위(master) vs 오른쪽위(right) 번호 비교
+  const master=String(o.master_no||o.awb_no||"").trim();
+  const right=String(o.right_no||"").trim();
+  job.master_no=master;
+  if(MODE==="input"){
+    if(!job.manualType) job.type="HAWB";              // CI/PL은 무조건 하우스
+  } else if(!job.manualType){
+    const norm=s=>s.replace(/[^A-Za-z0-9]/g,"").toUpperCase();
+    const isM = (!right) || (o.is_mawb===true && !(right&&master&&norm(right)!==norm(master)))
+                || (right&&master&&norm(right)===norm(master));
+    if(isM){ job.type="MAWB"; if(master) job.fields.b_mawb=master; }
+    else   { job.type="HAWB"; job.fields.b_mawb = right || String(o.hawb_no||"").trim() || job.fields.b_mawb; }
+  }
   if(job.type==="MAWB" && !(job.fields.d_desc||"").trim()) job.fields.d_desc=CONSOL_TXT;
   // 지역 확정
   const d = detectCC(id=>job.fields[id]||"");
@@ -968,7 +980,7 @@ function buildData(job){
   const f=k=>job.fields[k]||"";
   return {
     type:job.type, mode:MODE, source:job.name,
-    basic:{ no:f("b_mawb"), invoice_no:job.invoice||"", hs_code:job.hs||"", destination:f("b_dest"), via_to:f("b_via"), by:f("b_by") },
+    basic:{ no:f("b_mawb"), master_no:job.master_no||"", invoice_no:job.invoice||"", hs_code:job.hs||"", destination:f("b_dest"), via_to:f("b_via"), by:f("b_by") },
     party:{ shipper:f("p_shipper"), consignee:f("p_consignee"), notify:f("p_notify") },
     description:f("d_desc"), marks:f("d_marks"),
     ams:{
