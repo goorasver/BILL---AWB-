@@ -176,6 +176,8 @@
     <div class="panel">
       <div class="ph">③ 추출</div>
       <div class="body" style="display:grid;gap:7px">
+        <button class="btn wide" id="pickDirBtn">📁 저장 폴더 지정</button>
+        <div id="dirLabel" class="hint" style="margin:-2px 0 4px"></div>
         <button class="btn pri wide" id="exportBtn">⬇ 현재 건 추출</button>
         <button class="btn wide" id="exportAllBtn">⬇ 전체 개별 파일로</button>
         <button class="btn wide" id="exportOneBtn">⬇ 전체 1개 파일로</button>
@@ -995,10 +997,32 @@ function buildData(job){
     validation:{ region:job.region||"" }
   };
 }
-function download(obj,filename){
-  const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+/* 저장 폴더 지정 (크롬/엣지) — 지정되면 다운로드 창 없이 그 폴더에 바로 저장 */
+let SAVE_DIR=null;
+const canPickDir = typeof window.showDirectoryPicker==="function";
+if(!canPickDir){ /* 폴더 선택 미지원 브라우저: 버튼 숨김은 init에서 */ }
+$("pickDirBtn").onclick=async()=>{
+  if(!canPickDir){ alert("이 브라우저는 폴더 지정을 지원하지 않아요. 크롬/엣지에서 사용하세요.\n(지정 없이도 추출은 다운로드 폴더로 됩니다.)"); return; }
+  try{
+    SAVE_DIR = await window.showDirectoryPicker();
+    $("dirLabel").innerHTML = "저장 위치: <b>"+esc(SAVE_DIR.name)+"</b> 폴더";
+    $("dirLabel").style.color="var(--ok)";
+  }catch(e){ /* 취소 */ }
+};
+async function saveToDir(name,text){
+  const fh=await SAVE_DIR.getFileHandle(name,{create:true});
+  const w=await fh.createWritable(); await w.write(text); await w.close();
+}
+function downloadBlob(text,filename){
+  const blob=new Blob([text],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+/* obj를 파일로 출력: 폴더 지정 시 그 폴더에, 아니면 다운로드 */
+async function output(obj,filename){
+  const text=JSON.stringify(obj,null,2);
+  if(SAVE_DIR){ try{ await saveToDir(filename,text); return true; }catch(e){ downloadBlob(text,filename); return false; } }
+  downloadBlob(text,filename); return false;
 }
 /* 파일명 규칙
    · 체크빌(MAWB/HAWB 번호 있음) → 그 번호로
@@ -1030,25 +1054,39 @@ async function rememberJob(job){
   for(const k of keys) await memPut(k,rec);
   return keys[0];
 }
+const whereMsg = ()=> SAVE_DIR ? ("<b>"+esc(SAVE_DIR.name)+"</b> 폴더에 저장") : "다운로드 폴더에 저장";
 $("exportBtn").onclick=async()=>{
   syncFormToJob(); const j=curJob(); if(!j)return;
-  const d=buildData(j); download(d,fname(d));
+  const d=buildData(j); const nm=fname(d);
+  await output(d,nm);
   const saved=await rememberJob(j);
-  setStatus(`⬇ ${esc(fname(d))} 저장`+(saved?` · 📌 화주 기억: ${esc(saved)}`:""),"okbox");
+  setStatus(`⬇ ${esc(nm)} · ${whereMsg()}`+(saved?`<br>📌 화주 기억: ${esc(saved)}`:""),"okbox");
 };
-$("exportAllBtn").onclick=()=>{
+$("exportAllBtn").onclick=async()=>{
   syncFormToJob();
-  JOBS.forEach((j,i)=>{ rememberJob(j); const d=buildData(j); setTimeout(()=>download(d,fname(d)), i*350); });
+  let n=0;
+  for(const j of JOBS){
+    await rememberJob(j); const d=buildData(j);
+    await output(d,fname(d)); n++;
+    if(!SAVE_DIR) await new Promise(r=>setTimeout(r,350)); // 다운로드 모드일 때만 간격
+  }
+  setStatus(`⬇ ${n}건 · ${whereMsg()}`,"okbox");
 };
-$("exportOneBtn").onclick=()=>{
+$("exportOneBtn").onclick=async()=>{
   syncFormToJob();
-  download({count:JOBS.length, items:JOBS.map(buildData)}, `BILLS-${todayStr()}-${JOBS.length}건.json`);
+  const nm=`BILLS-${todayStr()}-${JOBS.length}건.json`;
+  await output({count:JOBS.length, items:JOBS.map(buildData)}, nm);
+  setStatus(`⬇ ${esc(nm)} · ${whereMsg()}`,"okbox");
 };
 $("previewBtn").onclick=()=>{ syncFormToJob(); const o=$("out"); o.style.display="block"; const j=curJob(); o.textContent=j?JSON.stringify(buildData(j),null,2):""; };
 $("clearBtn").onclick=()=>{ const j=curJob(); if(!j)return; j.fields={}; j.region=""; j.manualType=false; j.manualRegion=false; loadJobToForm(j); renderJobs(); };
 
 /* ================= 시작 ================= */
-(function init(){ const j=newJob(); CUR=j.id; renderJobs(); loadJobToForm(j); loadMem(); })();
+(function init(){
+  const j=newJob(); CUR=j.id; renderJobs(); loadJobToForm(j); loadMem();
+  if(!canPickDir){ $("pickDirBtn").style.display="none"; $("dirLabel").textContent="추출 파일은 다운로드 폴더에 저장됩니다."; }
+  else { $("dirLabel").textContent="폴더 미지정 → 다운로드 폴더에 저장"; }
+})();
 </script>
 </body>
 </html>
