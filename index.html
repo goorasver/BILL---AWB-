@@ -1013,16 +1013,37 @@ async function saveToDir(name,text){
   const fh=await SAVE_DIR.getFileHandle(name,{create:true});
   const w=await fh.createWritable(); await w.write(text); await w.close();
 }
+/* 폴더가 아직 쓰기 가능한지 확인(권한 해제 감지) */
+async function dirWritable(){
+  if(!SAVE_DIR) return false;
+  try{
+    if(SAVE_DIR.queryPermission){
+      let p=await SAVE_DIR.queryPermission({mode:"readwrite"});
+      if(p==="prompt" && SAVE_DIR.requestPermission) p=await SAVE_DIR.requestPermission({mode:"readwrite"});
+      if(p!=="granted") return false;
+    }
+    return true;
+  }catch(e){ return false; }
+}
+function dropDir(msg){
+  SAVE_DIR=null;
+  $("dirLabel").innerHTML="⚠ "+esc(msg)+" — <b>다운로드 폴더로 대체</b>. 폴더를 다시 지정하세요.";
+  $("dirLabel").style.color="var(--warn)";
+}
 function downloadBlob(text,filename){
   const blob=new Blob([text],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),3000);
 }
-/* obj를 파일로 출력: 폴더 지정 시 그 폴더에, 아니면 다운로드 */
+/* obj를 파일로 출력. 폴더 저장 실패(삭제/권한해제) 시 안전하게 다운로드로 대체 */
 async function output(obj,filename){
   const text=JSON.stringify(obj,null,2);
-  if(SAVE_DIR){ try{ await saveToDir(filename,text); return true; }catch(e){ downloadBlob(text,filename); return false; } }
-  downloadBlob(text,filename); return false;
+  if(SAVE_DIR){
+    if(!(await dirWritable())){ dropDir("지정 폴더 접근 불가(권한 해제)"); downloadBlob(text,filename); return "fallback"; }
+    try{ await saveToDir(filename,text); return "dir"; }
+    catch(e){ dropDir("지정 폴더에 저장 실패(폴더 삭제/이동)"); downloadBlob(text,filename); return "fallback"; }
+  }
+  downloadBlob(text,filename); return "download";
 }
 /* 파일명 규칙
    · 체크빌(MAWB/HAWB 번호 있음) → 그 번호로
@@ -1054,29 +1075,30 @@ async function rememberJob(job){
   for(const k of keys) await memPut(k,rec);
   return keys[0];
 }
-const whereMsg = ()=> SAVE_DIR ? ("<b>"+esc(SAVE_DIR.name)+"</b> 폴더에 저장") : "다운로드 폴더에 저장";
+const methodMsg = m => m==="dir" ? ("<b>"+esc(SAVE_DIR.name)+"</b> 폴더에 저장")
+  : m==="fallback" ? "⚠ 폴더 저장 실패 → <b>다운로드 폴더</b>에 저장됨" : "다운로드 폴더에 저장";
 $("exportBtn").onclick=async()=>{
   syncFormToJob(); const j=curJob(); if(!j)return;
   const d=buildData(j); const nm=fname(d);
-  await output(d,nm);
+  const m=await output(d,nm);
   const saved=await rememberJob(j);
-  setStatus(`⬇ ${esc(nm)} · ${whereMsg()}`+(saved?`<br>📌 화주 기억: ${esc(saved)}`:""),"okbox");
+  setStatus(`⬇ ${esc(nm)} · ${methodMsg(m)}`+(saved?`<br>📌 화주 기억: ${esc(saved)}`:""), m==="fallback"?"warnbox":"okbox");
 };
 $("exportAllBtn").onclick=async()=>{
   syncFormToJob();
-  let n=0;
+  let n=0, fb=0;
   for(const j of JOBS){
     await rememberJob(j); const d=buildData(j);
-    await output(d,fname(d)); n++;
+    const m=await output(d,fname(d)); n++; if(m==="fallback")fb++;
     if(!SAVE_DIR) await new Promise(r=>setTimeout(r,350)); // 다운로드 모드일 때만 간격
   }
-  setStatus(`⬇ ${n}건 · ${whereMsg()}`,"okbox");
+  setStatus(`⬇ ${n}건 저장 완료` + (fb?` · ⚠ ${fb}건은 폴더 실패로 다운로드 폴더에 저장됨`:` · ${methodMsg(SAVE_DIR?"dir":"download")}`), fb?"warnbox":"okbox");
 };
 $("exportOneBtn").onclick=async()=>{
   syncFormToJob();
   const nm=`BILLS-${todayStr()}-${JOBS.length}건.json`;
-  await output({count:JOBS.length, items:JOBS.map(buildData)}, nm);
-  setStatus(`⬇ ${esc(nm)} · ${whereMsg()}`,"okbox");
+  const m=await output({count:JOBS.length, items:JOBS.map(buildData)}, nm);
+  setStatus(`⬇ ${esc(nm)} · ${methodMsg(m)}`, m==="fallback"?"warnbox":"okbox");
 };
 $("previewBtn").onclick=()=>{ syncFormToJob(); const o=$("out"); o.style.display="block"; const j=curJob(); o.textContent=j?JSON.stringify(buildData(j),null,2):""; };
 $("clearBtn").onclick=()=>{ const j=curJob(); if(!j)return; j.fields={}; j.region=""; j.manualType=false; j.manualRegion=false; loadJobToForm(j); renderJobs(); };
